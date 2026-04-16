@@ -2,4 +2,7 @@ node_modules/
 .vercel/
 .claude/
 handover_payload.json
+handover_claude_setup.json
 gen_cheatsheet.js
+
+.vercel
