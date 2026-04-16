@@ -315,8 +315,8 @@ Write-Host "  Claude Config Setup" -ForegroundColor Cyan
 Write-Host "  ===================" -ForegroundColor Cyan
 Write-Host ""
 
-# [1/6] Check git
-Write-Host "[1/6] Checking git..." -ForegroundColor Yellow
+# [1/7] Check git
+Write-Host "[1/7] Checking git..." -ForegroundColor Yellow
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Host "  Git not found. Installing via winget..." -ForegroundColor Yellow
     winget install --id Git.Git -e --accept-package-agreements --accept-source-agreements
@@ -328,8 +328,33 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 }
 Write-Host "  OK - $(git --version)" -ForegroundColor Green
 
-# [2/6] Backup existing .claude
-Write-Host "[2/6] Checking existing .claude..." -ForegroundColor Yellow
+# [2/7] Check Node.js (needed for handover/resume skills)
+Write-Host "[2/7] Checking Node.js..." -ForegroundColor Yellow
+if (!(Get-Command node -ErrorAction SilentlyContinue)) {
+    Write-Host "  Node.js not found. Installing LTS via winget..." -ForegroundColor Yellow
+    winget install OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
+    # Refresh PATH from registry
+    $env:PATH = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
+    # Fallback: scan known locations
+    if (!(Get-Command node -ErrorAction SilentlyContinue)) {
+        $candidates = @(
+            "C:\\Program Files\\nodejs",
+            "C:\\Program Files (x86)\\nodejs",
+            "$env:LOCALAPPDATA\\Programs\\nodejs"
+        )
+        foreach ($p in $candidates) {
+            if (Test-Path "$p\\node.exe") { $env:PATH += ";$p"; break }
+        }
+    }
+    if (!(Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-Host "  WARNING: Node installed but not in PATH. Restart PowerShell and re-run." -ForegroundColor Yellow
+        exit 1
+    }
+}
+Write-Host "  OK - $(node --version)" -ForegroundColor Green
+
+# [3/7] Backup existing .claude
+Write-Host "[3/7] Checking existing .claude..." -ForegroundColor Yellow
 if (Test-Path $claudeDir) {
     $bak = "$claudeDir.bak." + (Get-Date -Format yyyyMMddHHmmss)
     Rename-Item $claudeDir $bak
@@ -338,8 +363,8 @@ if (Test-Path $claudeDir) {
     Write-Host "  No existing .claude found (clean install)" -ForegroundColor Green
 }
 
-# [3/6] Clone
-Write-Host "[3/6] Cloning $repo ..." -ForegroundColor Yellow
+# [4/7] Clone
+Write-Host "[4/7] Cloning $repo ..." -ForegroundColor Yellow
 git clone $repo $claudeDir
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  FAILED: Check repo URL and GitHub permissions" -ForegroundColor Red
@@ -347,14 +372,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  OK - Clone complete" -ForegroundColor Green
 
-# [4/6] Git identity
-Write-Host "[4/6] Setting git identity..." -ForegroundColor Yellow
+# [5/7] Git identity
+Write-Host "[5/7] Setting git identity..." -ForegroundColor Yellow
 git config --global user.name $name
 git config --global user.email $email
 Write-Host "  OK - $name <$email>" -ForegroundColor Green
 
-# [5/6] PowerShell aliases
-Write-Host "[5/6] Setting up aliases (cpush/cpull/cstatus)..." -ForegroundColor Yellow
+# [6/7] PowerShell aliases
+Write-Host "[6/7] Setting up aliases (cpush/cpull/cstatus)..." -ForegroundColor Yellow
 $profileDir = Split-Path $PROFILE
 if (!(Test-Path $profileDir)) { New-Item $profileDir -ItemType Directory -Force | Out-Null }
 if (!(Test-Path $PROFILE)) { New-Item $PROFILE -Force | Out-Null }
@@ -379,8 +404,8 @@ if (!(Select-String -Path $PROFILE -Pattern "Claude Config Sync" -Quiet -ErrorAc
   if (v.notionToken && v.notionDb) {
     script += `
 
-# [6/6] Notion credentials
-Write-Host "[6/6] Writing Notion credentials..." -ForegroundColor Yellow
+# [7/7] Notion credentials
+Write-Host "[7/7] Writing Notion credentials..." -ForegroundColor Yellow
 $envContent = @"
 NOTION_HANDOVER_TOKEN=${esc(v.notionToken)}
 NOTION_HANDOVER_DB_ID=${esc(v.notionDb)}
@@ -395,8 +420,8 @@ if (Test-Path (Split-Path $envPath)) {
   } else {
     script += `
 
-# [6/6] Notion credentials
-Write-Host "[6/6] Notion credentials - skipped (not provided)" -ForegroundColor Gray`;
+# [7/7] Notion credentials
+Write-Host "[7/7] Notion credentials - skipped (not provided)" -ForegroundColor Gray`;
   }
 
   script += `
@@ -438,8 +463,8 @@ echo "  Claude Config Setup"
 echo "  ==================="
 echo ""
 
-# [1/6] Check git
-echo "[1/6] Checking git..."
+# [1/7] Check git
+echo "[1/7] Checking git..."
 if ! command -v git &>/dev/null; then
     echo "  FAILED: Git is not installed."
     echo "  Please install from https://git-scm.com/download/win"
@@ -447,8 +472,37 @@ if ! command -v git &>/dev/null; then
 fi
 echo "  OK - $(git --version)"
 
-# [2/6] Backup existing .claude
-echo "[2/6] Checking existing .claude..."
+# [2/7] Check Node.js (needed for handover/resume skills)
+echo "[2/7] Checking Node.js..."
+if ! command -v node &>/dev/null; then
+    echo "  Node.js not found. Installing LTS via winget..."
+    winget install OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
+    # Refresh PATH from registry (method A)
+    FRESH_MACHINE=$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','Machine')" | tr -d '\\r')
+    FRESH_USER=$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','User')" | tr -d '\\r')
+    export PATH="$(cygpath -u -p "$FRESH_MACHINE"):$(cygpath -u -p "$FRESH_USER"):$PATH"
+    # Fallback: scan known locations (method B)
+    if ! command -v node &>/dev/null; then
+        for p in \\
+            "/c/Program Files/nodejs" \\
+            "/c/Program Files (x86)/nodejs" \\
+            "$LOCALAPPDATA/Programs/nodejs" \\
+            "$HOME/AppData/Local/Programs/nodejs"; do
+            if [ -x "$p/node.exe" ]; then
+                export PATH="$PATH:$p"
+                break
+            fi
+        done
+    fi
+    if ! command -v node &>/dev/null; then
+        echo "  WARNING: Node installed but not found. Restart Git Bash and re-run."
+        exit 1
+    fi
+fi
+echo "  OK - $(node --version)"
+
+# [3/7] Backup existing .claude
+echo "[3/7] Checking existing .claude..."
 if [ -d "$CLAUDE_DIR" ]; then
     BAK="$CLAUDE_DIR.bak.$(date +%s)"
     mv "$CLAUDE_DIR" "$BAK"
@@ -457,19 +511,19 @@ else
     echo "  No existing .claude found (clean install)"
 fi
 
-# [3/6] Clone
-echo "[3/6] Cloning $REPO ..."
+# [4/7] Clone
+echo "[4/7] Cloning $REPO ..."
 git clone "$REPO" "$CLAUDE_DIR"
 echo "  OK - Clone complete"
 
-# [4/6] Git identity
-echo "[4/6] Setting git identity..."
+# [5/7] Git identity
+echo "[5/7] Setting git identity..."
 git config --global user.name "$NAME"
 git config --global user.email "$EMAIL"
 echo "  OK - $NAME <$EMAIL>"
 
-# [5/6] Bash aliases
-echo "[5/6] Setting up aliases (cpush/cpull/cstatus)..."
+# [6/7] Bash aliases
+echo "[6/7] Setting up aliases (cpush/cpull/cstatus)..."
 ALIAS_LINE='[ -f ~/.claude/shell-aliases.sh ] && source ~/.claude/shell-aliases.sh'
 if ! grep -q "shell-aliases.sh" ~/.bashrc 2>/dev/null; then
     echo "$ALIAS_LINE" >> ~/.bashrc
@@ -481,8 +535,8 @@ fi`;
   if (v.notionToken && v.notionDb) {
     script += `
 
-# [6/6] Notion credentials
-echo "[6/6] Writing Notion credentials..."
+# [7/7] Notion credentials
+echo "[7/7] Writing Notion credentials..."
 ENV_PATH="$CLAUDE_DIR/skills/handover/.env"
 if [ -d "$(dirname "$ENV_PATH")" ]; then
     cat > "$ENV_PATH" << 'ENVEOF'
@@ -496,8 +550,8 @@ fi`;
   } else {
     script += `
 
-# [6/6] Notion credentials
-echo "[6/6] Notion credentials - skipped (not provided)"`;
+# [7/7] Notion credentials
+echo "[7/7] Notion credentials - skipped (not provided)"`;
   }
 
   script += `
