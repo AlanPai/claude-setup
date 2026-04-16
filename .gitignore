@@ -1,0 +1,5 @@
+node_modules/
+.vercel/
+.claude/
+handover_payload.json
+gen_cheatsheet.js

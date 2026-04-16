@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Config Setup Tool</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #21262d;
+    --border: #30363d; --text: #e6edf3; --text2: #8b949e;
+    --accent: #58a6ff; --accent2: #3fb950; --warn: #d29922;
+    --danger: #f85149; --code-bg: #0d1117; --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    min-height: 100vh; padding: 20px;
+  }
+  .container { max-width: 720px; margin: 0 auto; }
+
+  /* Header */
+  .header { text-align: center; padding: 40px 0 30px; }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header h1 span { font-size: 32px; }
+  .header p { color: var(--text2); font-size: 15px; }
+
+  /* Sections */
+  .section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 14px; font-weight: 600; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 12px;
+    background: var(--surface2); color: var(--text2);
+  }
+  .section-title .badge.required { background: #58a6ff22; color: var(--accent); }
+  .section-title .badge.optional { background: #d2992222; color: var(--warn); }
+
+  /* Form */
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-size: 13px; color: var(--text2);
+    margin-bottom: 4px; font-weight: 500;
+  }
+  .field input {
+    width: 100%; padding: 10px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 14px; font-family: "Consolas", "SF Mono", monospace;
+    transition: border-color 0.2s;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); }
+  .field input::placeholder { color: #484f58; }
+  .field .hint { font-size: 12px; color: #484f58; margin-top: 3px; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 20px; border-radius: 6px; border: 1px solid var(--border);
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .btn-primary {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #4c9aed; }
+  .btn-secondary { background: var(--surface2); color: var(--text); }
+  .btn-secondary:hover { background: #30363d; }
+
+  /* Output blocks */
+  .output-block { display: none; margin-top: 16px; }
+  .output-block.visible { display: block; }
+  .output-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .output-label { font-size: 13px; font-weight: 600; color: var(--text2); }
+  .copy-btn {
+    padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text2); font-size: 12px;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--accent2); color: var(--accent2); }
+
+  .code-box {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 16px; font-family: "Consolas", "SF Mono", monospace;
+    font-size: 13px; line-height: 1.7; overflow-x: auto;
+    white-space: pre-wrap; word-break: break-all; color: #c9d1d9;
+    max-height: 400px; overflow-y: auto;
+  }
+
+  /* Link output */
+  .link-box {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px 16px; font-family: "Consolas", "SF Mono", monospace;
+    font-size: 12px; color: var(--accent); word-break: break-all;
+  }
+  .link-hint { font-size: 12px; color: var(--text2); margin-top: 6px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; margin-bottom: 0; }
+  .tab {
+    padding: 8px 16px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); border-bottom: none;
+    background: var(--surface2); color: var(--text2); cursor: pointer;
+    border-radius: var(--radius) var(--radius) 0 0; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .tab.active { background: var(--code-bg); color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .tab-content .code-box { border-radius: 0 var(--radius) var(--radius) var(--radius); }
+
+  /* Validation */
+  .field input.error { border-color: var(--danger); }
+  .error-msg { color: var(--danger); font-size: 12px; margin-top: 3px; display: none; }
+  .error-msg.visible { display: block; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    body { padding: 12px; }
+    .header h1 { font-size: 22px; }
+    .section { padding: 16px; }
+    .btn-row { flex-direction: column; }
+    .btn { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><span>🔧</span> Claude Config Setup Tool</h1>
+    <p>一鍵安裝你的 Claude Code 個人設定到任何 Windows 裝置</p>
+  </div>
+
+  <!-- 基本設定 -->
+  <div class="section">
+    <div class="section-title">
+      基本設定 <span class="badge required">必填</span>
+    </div>
+    <div class="field">
+      <label for="name">Git Username</label>
+      <input type="text" id="name" placeholder="AlanPai">
+    </div>
+    <div class="field">
+      <label for="email">Git Email (建議用 GitHub noreply)</label>
+      <input type="text" id="email" placeholder="12345678+username@users.noreply.github.com">
+      <div class="hint">到 github.com/settings/emails 開啟 "Keep my email addresses private" 取得</div>
+    </div>
+    <div class="field">
+      <label for="repo">GitHub Repo URL (HTTPS)</label>
+      <input type="text" id="repo" placeholder="https://github.com/username/repo-name.git">
+      <div class="hint">Private repo 建議用 HTTPS（Git Credential Manager 會處理登入）</div>
+    </div>
+  </div>
+
+  <!-- Notion 選填 -->
+  <div class="section">
+    <div class="section-title">
+      Notion 交班功能 <span class="badge optional">選填</span>
+    </div>
+    <div class="field">
+      <label for="notion_token">Notion Integration Token</label>
+      <input type="password" id="notion_token" placeholder="ntn_xxxxxxxxxxxxxxxxxxxx">
+      <div class="hint">從 notion.so/my-integrations 取得。不填的話腳本會跳過這步</div>
+    </div>
+    <div class="field">
+      <label for="notion_db">Notion Database ID</label>
+      <input type="text" id="notion_db" placeholder="32 字元 hex（Notion 資料庫 URL 裡的 ID）">
+    </div>
+  </div>
+
+  <!-- 按鈕 -->
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="generate()">📋 產生安裝指令</button>
+    <button class="btn btn-secondary" onclick="generateLink()">🔗 產生專屬連結</button>
+  </div>
+
+  <!-- 專屬連結 -->
+  <div class="output-block" id="link-output">
+    <div class="section">
+      <div class="output-header">
+        <span class="output-label">🔗 你的專屬連結</span>
+        <button class="copy-btn" onclick="copyText('link-content', this)">📋 複製</button>
+      </div>
+      <div class="link-box" id="link-content"></div>
+      <div class="link-hint">💡 書籤存起來，下次換裝置直接開這個連結，欄位自動帶入</div>
+    </div>
+  </div>
+
+  <!-- 安裝指令 -->
+  <div class="output-block" id="script-output">
+    <div class="section">
+      <div class="output-header">
+        <span class="output-label">安裝指令</span>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('ps')">PowerShell</button>
+        <button class="tab" onclick="switchTab('bash')">Git Bash</button>
+      </div>
+      <div class="tab-content active" id="tab-ps">
+        <div style="display:flex; justify-content:flex-end; padding: 8px 0;">
+          <button class="copy-btn" onclick="copyText('ps-code', this)">📋 複製</button>
+        </div>
+        <div class="code-box" id="ps-code"></div>
+      </div>
+      <div class="tab-content" id="tab-bash">
+        <div style="display:flex; justify-content:flex-end; padding: 8px 0;">
+          <button class="copy-btn" onclick="copyText('bash-code', this)">📋 複製</button>
+        </div>
+        <div class="code-box" id="bash-code"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使用說明 -->
+  <div class="section" style="margin-top: 24px; border-color: #21262d;">
+    <div class="section-title">📖 使用方式</div>
+    <div style="font-size: 14px; color: var(--text2); line-height: 2;">
+      <strong style="color: var(--text);">第一次使用：</strong>填入資料 → 按「產生專屬連結」→ 書籤存起來<br>
+      <strong style="color: var(--text);">每次換裝置：</strong>開書籤連結 → 按「產生安裝指令」→ 複製 → 貼到 PowerShell 或 Git Bash<br>
+      <strong style="color: var(--text);">給朋友用：</strong>把這個網頁連結傳給他，讓他填自己的資料產生自己的連結
+    </div>
+  </div>
+</div>
+
+<script>
+// --- URL 參數自動帶入 ---
+(function loadFromURL() {
+  const p = new URLSearchParams(location.search);
+  if (p.get('name'))  document.getElementById('name').value = p.get('name');
+  if (p.get('email')) document.getElementById('email').value = p.get('email');
+  if (p.get('repo'))  document.getElementById('repo').value = p.get('repo');
+})();
+
+// --- 表單驗證 ---
+function validate() {
+  const fields = ['name', 'email', 'repo'];
+  let ok = true;
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el.value.trim()) { el.classList.add('error'); ok = false; }
+    else { el.classList.remove('error'); }
+  });
+  if (!ok) alert('請填寫所有必填欄位');
+  return ok;
+}
+
+// --- 取值 ---
+function getValues() {
+  return {
+    name: document.getElementById('name').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    repo: document.getElementById('repo').value.trim(),
+    notionToken: document.getElementById('notion_token').value.trim(),
+    notionDb: document.getElementById('notion_db').value.trim(),
+  };
+}
+
+// --- 產生專屬連結 ---
+function generateLink() {
+  if (!validate()) return;
+  const v = getValues();
+  const params = new URLSearchParams({ name: v.name, email: v.email, repo: v.repo });
+  const link = location.origin + location.pathname + '?' + params.toString();
+  document.getElementById('link-content').textContent = link;
+  document.getElementById('link-output').classList.add('visible');
+}
+
+// --- 產生安裝指令 ---
+function generate() {
+  if (!validate()) return;
+  const v = getValues();
+  document.getElementById('ps-code').textContent = genPowerShell(v);
+  document.getElementById('bash-code').textContent = genBash(v);
+  document.getElementById('script-output').classList.add('visible');
+}
+
+// --- PowerShell 腳本 ---
+function genPowerShell(v) {
+  const esc = s => s.replace(/'/g, "''");
+  let script = `# ============================================
+# Claude Config Setup - PowerShell
+# ============================================
+$ErrorActionPreference = "Stop"
+$name = '${esc(v.name)}'
+$email = '${esc(v.email)}'
+$repo = '${esc(v.repo)}'
+$claudeDir = "$HOME\\.claude"
+
+Write-Host ""
+Write-Host "  Claude Config Setup" -ForegroundColor Cyan
+Write-Host "  ===================" -ForegroundColor Cyan
+Write-Host ""
+
+# [1/6] Check git
+Write-Host "[1/6] Checking git..." -ForegroundColor Yellow
+if (!(Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host "  Git not found. Installing via winget..." -ForegroundColor Yellow
+    winget install --id Git.Git -e --accept-package-agreements --accept-source-agreements
+    $env:PATH += ";C:\\Program Files\\Git\\cmd"
+    if (!(Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Host "  FAILED: Please install Git manually from https://git-scm.com" -ForegroundColor Red
+        exit 1
+    }
+}
+Write-Host "  OK - $(git --version)" -ForegroundColor Green
+
+# [2/6] Backup existing .claude
+Write-Host "[2/6] Checking existing .claude..." -ForegroundColor Yellow
+if (Test-Path $claudeDir) {
+    $bak = "$claudeDir.bak." + (Get-Date -Format yyyyMMddHHmmss)
+    Rename-Item $claudeDir $bak
+    Write-Host "  Backed up to $bak" -ForegroundColor Yellow
+} else {
+    Write-Host "  No existing .claude found (clean install)" -ForegroundColor Green
+}
+
+# [3/6] Clone
+Write-Host "[3/6] Cloning $repo ..." -ForegroundColor Yellow
+git clone $repo $claudeDir
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  FAILED: Check repo URL and GitHub permissions" -ForegroundColor Red
+    exit 1
+}
+Write-Host "  OK - Clone complete" -ForegroundColor Green
+
+# [4/6] Git identity
+Write-Host "[4/6] Setting git identity..." -ForegroundColor Yellow
+git config --global user.name $name
+git config --global user.email $email
+Write-Host "  OK - $name <$email>" -ForegroundColor Green
+
+# [5/6] PowerShell aliases
+Write-Host "[5/6] Setting up aliases (cpush/cpull/cstatus)..." -ForegroundColor Yellow
+$profileDir = Split-Path $PROFILE
+if (!(Test-Path $profileDir)) { New-Item $profileDir -ItemType Directory -Force | Out-Null }
+if (!(Test-Path $PROFILE)) { New-Item $PROFILE -Force | Out-Null }
+$aliasBlock = @'
+
+# --- Claude Config Sync Aliases ---
+function cpush { git -C $HOME\\.claude add -A; $d=(Get-Date -Format yyyy-MM-dd); if (git -C $HOME\\.claude diff --cached --quiet 2>$null; !$?) { git -C $HOME\\.claude commit -m "sync: $d"; git -C $HOME\\.claude push } else { Write-Host "[claude] nothing to push" } }
+function cpull { git -C $HOME\\.claude pull }
+function cstatus { git -C $HOME\\.claude status }
+function cdiff { git -C $HOME\\.claude diff }
+function clog { git -C $HOME\\.claude log --oneline -10 }
+# --- End Claude Config Sync ---
+'@
+if (!(Select-String -Path $PROFILE -Pattern "Claude Config Sync" -Quiet -ErrorAction SilentlyContinue)) {
+    Add-Content $PROFILE $aliasBlock
+    Write-Host "  OK - Added to $PROFILE" -ForegroundColor Green
+} else {
+    Write-Host "  Skipped - aliases already exist" -ForegroundColor Gray
+}`;
+
+  // Notion block
+  if (v.notionToken && v.notionDb) {
+    script += `
+
+# [6/6] Notion credentials
+Write-Host "[6/6] Writing Notion credentials..." -ForegroundColor Yellow
+$envContent = @"
+NOTION_HANDOVER_TOKEN=${esc(v.notionToken)}
+NOTION_HANDOVER_DB_ID=${esc(v.notionDb)}
+"@
+$envPath = "$claudeDir\\skills\\handover\\.env"
+if (Test-Path (Split-Path $envPath)) {
+    Set-Content $envPath $envContent
+    Write-Host "  OK - Written to $envPath" -ForegroundColor Green
+} else {
+    Write-Host "  Skipped - handover skill not found in repo" -ForegroundColor Gray
+}`;
+  } else {
+    script += `
+
+# [6/6] Notion credentials
+Write-Host "[6/6] Notion credentials - skipped (not provided)" -ForegroundColor Gray`;
+  }
+
+  script += `
+
+# === Done! ===
+Write-Host ""
+Write-Host "  Setup complete!" -ForegroundColor Green
+Write-Host ""
+Write-Host "  Location : $claudeDir" -ForegroundColor White
+Write-Host "  Repo     : $repo" -ForegroundColor White
+Write-Host ""
+Get-ChildItem $claudeDir -Name
+Write-Host ""
+Write-Host "  Quick commands (restart PowerShell first):" -ForegroundColor Cyan
+Write-Host "    cpush   - push config to GitHub"
+Write-Host "    cpull   - pull latest config"
+Write-Host "    cstatus - check status"
+Write-Host ""`;
+
+  return script;
+}
+
+// --- Git Bash 腳本 ---
+function genBash(v) {
+  const esc = s => s.replace(/'/g, "'\\''");
+  let script = `#!/bin/bash
+# ============================================
+# Claude Config Setup - Git Bash
+# ============================================
+set -e
+
+NAME='${esc(v.name)}'
+EMAIL='${esc(v.email)}'
+REPO='${esc(v.repo)}'
+CLAUDE_DIR="$HOME/.claude"
+
+echo ""
+echo "  Claude Config Setup"
+echo "  ==================="
+echo ""
+
+# [1/6] Check git
+echo "[1/6] Checking git..."
+if ! command -v git &>/dev/null; then
+    echo "  FAILED: Git is not installed."
+    echo "  Please install from https://git-scm.com/download/win"
+    exit 1
+fi
+echo "  OK - $(git --version)"
+
+# [2/6] Backup existing .claude
+echo "[2/6] Checking existing .claude..."
+if [ -d "$CLAUDE_DIR" ]; then
+    BAK="$CLAUDE_DIR.bak.$(date +%s)"
+    mv "$CLAUDE_DIR" "$BAK"
+    echo "  Backed up to $BAK"
+else
+    echo "  No existing .claude found (clean install)"
+fi
+
+# [3/6] Clone
+echo "[3/6] Cloning $REPO ..."
+git clone "$REPO" "$CLAUDE_DIR"
+echo "  OK - Clone complete"
+
+# [4/6] Git identity
+echo "[4/6] Setting git identity..."
+git config --global user.name "$NAME"
+git config --global user.email "$EMAIL"
+echo "  OK - $NAME <$EMAIL>"
+
+# [5/6] Bash aliases
+echo "[5/6] Setting up aliases (cpush/cpull/cstatus)..."
+ALIAS_LINE='[ -f ~/.claude/shell-aliases.sh ] && source ~/.claude/shell-aliases.sh'
+if ! grep -q "shell-aliases.sh" ~/.bashrc 2>/dev/null; then
+    echo "$ALIAS_LINE" >> ~/.bashrc
+    echo "  OK - Added source to ~/.bashrc"
+else
+    echo "  Skipped - already in ~/.bashrc"
+fi`;
+
+  if (v.notionToken && v.notionDb) {
+    script += `
+
+# [6/6] Notion credentials
+echo "[6/6] Writing Notion credentials..."
+ENV_PATH="$CLAUDE_DIR/skills/handover/.env"
+if [ -d "$(dirname "$ENV_PATH")" ]; then
+    cat > "$ENV_PATH" << 'ENVEOF'
+NOTION_HANDOVER_TOKEN=${v.notionToken}
+NOTION_HANDOVER_DB_ID=${v.notionDb}
+ENVEOF
+    echo "  OK - Written to $ENV_PATH"
+else
+    echo "  Skipped - handover skill not found in repo"
+fi`;
+  } else {
+    script += `
+
+# [6/6] Notion credentials
+echo "[6/6] Notion credentials - skipped (not provided)"`;
+  }
+
+  script += `
+
+# === Done! ===
+echo ""
+echo "  Setup complete!"
+echo ""
+echo "  Location : $CLAUDE_DIR"
+echo "  Repo     : $REPO"
+echo ""
+ls "$CLAUDE_DIR"
+echo ""
+echo "  Quick commands (restart Git Bash first):"
+echo "    cpush   - push config to GitHub"
+echo "    cpull   - pull latest config"
+echo "    cstatus - check status"
+echo ""`;
+
+  return script;
+}
+
+// --- Tab 切換 ---
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  if (tab === 'ps') {
+    document.querySelector('.tab:nth-child(1)').classList.add('active');
+    document.getElementById('tab-ps').classList.add('active');
+  } else {
+    document.querySelector('.tab:nth-child(2)').classList.add('active');
+    document.getElementById('tab-bash').classList.add('active');
+  }
+}
+
+// --- 複製 ---
+async function copyText(elementId, btn) {
+  const text = document.getElementById(elementId).textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✅ 已複製';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 複製'; btn.classList.remove('copied'); }, 2000);
+  } catch {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '✅ 已複製';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 複製'; btn.classList.remove('copied'); }, 2000);
+  }
+}
+</script>
+</body>
+</html>
