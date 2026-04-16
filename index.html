@@ -177,6 +177,13 @@
       <label for="notion_db">Notion Database ID</label>
       <input type="text" id="notion_db" placeholder="32 字元 hex（Notion 資料庫 URL 裡的 ID）">
     </div>
+    <div class="field" style="margin-top: 12px;">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text2); font-size: 13px;">
+        <input type="checkbox" id="notion_in_url" style="width: 16px; height: 16px; cursor: pointer;">
+        產生專屬連結時包含 Notion 憑證
+      </label>
+      <div class="hint" style="color: var(--warn);">⚠️ Token 會出現在網址裡，只建議自己用的書籤，不要分享給別人</div>
+    </div>
   </div>
 
   <!-- 按鈕 -->
@@ -240,6 +247,8 @@
   if (p.get('name'))  document.getElementById('name').value = p.get('name');
   if (p.get('email')) document.getElementById('email').value = p.get('email');
   if (p.get('repo'))  document.getElementById('repo').value = p.get('repo');
+  if (p.get('ntoken')) document.getElementById('notion_token').value = p.get('ntoken');
+  if (p.get('ndb'))    document.getElementById('notion_db').value = p.get('ndb');
 })();
 
 // --- 表單驗證 ---
@@ -271,6 +280,10 @@ function generateLink() {
   if (!validate()) return;
   const v = getValues();
   const params = new URLSearchParams({ name: v.name, email: v.email, repo: v.repo });
+  // 勾選「包含 Notion 憑證」時才寫入 URL
+  const includeNotion = document.getElementById('notion_in_url').checked;
+  if (includeNotion && v.notionToken) params.set('ntoken', v.notionToken);
+  if (includeNotion && v.notionDb)    params.set('ndb', v.notionDb);
   const link = location.origin + location.pathname + '?' + params.toString();
   document.getElementById('link-content').textContent = link;
   document.getElementById('link-output').classList.add('visible');
