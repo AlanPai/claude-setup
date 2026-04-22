@@ -125,10 +125,27 @@
   .error-msg { color: var(--danger); font-size: 12px; margin-top: 3px; display: none; }
   .error-msg.visible { display: block; }
 
-  /* Gate (GitHub account check) */
-  #gate, #tutorial { display: none; }
-  #gate.visible, #tutorial.visible { display: block; }
-  #main-flow.hidden { display: none; }
+  /* Gate 多步問答 + Tutorial + Forms — 預設全部隱藏，加 .visible 才顯示 */
+  #gate-q1, #gate-q2, #gate-q3, #gate-q4,
+  #tutorial,
+  #form-skill-pack, #form-self-existing, #form-self-new,
+  #output-wrap { display: none; }
+  #gate-q1.visible, #gate-q2.visible, #gate-q3.visible, #gate-q4.visible,
+  #tutorial.visible,
+  #form-skill-pack.visible, #form-self-existing.visible, #form-self-new.visible,
+  #output-wrap.visible { display: block; }
+
+  /* Gate 步驟標示 */
+  .gate-progress {
+    font-size: 12px; color: var(--text2); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .gate-progress .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--surface2);
+  }
+  .gate-progress .dot.active { background: var(--accent); }
+  .gate-progress .dot.done { background: var(--accent2); }
+
   .gate-question { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
   .gate-desc { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
   .gate-btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -157,8 +174,21 @@
   .tutorial-step .step-body { margin-top: 8px; margin-left: 34px; color: var(--text2); font-size: 14px; }
   .tutorial-step a { color: var(--accent); text-decoration: none; }
   .tutorial-step a:hover { text-decoration: underline; }
-  .tutorial-back { background: transparent; color: var(--text2); font-size: 13px; border: none; cursor: pointer; margin-top: 12px; }
-  .tutorial-back:hover { color: var(--accent); }
+
+  /* 回上一步按鈕 */
+  .back-btn {
+    background: transparent; color: var(--text2); font-size: 13px;
+    border: none; cursor: pointer; margin-top: 16px; padding: 4px 0;
+  }
+  .back-btn:hover { color: var(--accent); }
+
+  /* Selection summary：顯示當前 state 摘要 */
+  .state-summary {
+    font-size: 12px; color: var(--text2); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; margin-bottom: 16px;
+  }
+  .state-summary strong { color: var(--text); font-weight: 600; }
 
   /* Responsive */
   @media (max-width: 600px) {
@@ -178,23 +208,90 @@
     <p>一鍵安裝你的 Claude Code 個人設定到任何 Windows 裝置</p>
   </div>
 
-  <!-- Gate：確認 GitHub 帳號 -->
-  <div id="gate" class="section">
-    <div class="gate-question">開始前先問一下 — 你有 GitHub 帳號嗎？</div>
-    <div class="gate-desc">這個工具需要把你的 Claude 設定放在 GitHub repo，方便跨裝置同步。</div>
+  <!-- ============ Gate Q1: 你想裝什麼？ ============ -->
+  <div id="gate-q1" class="section">
+    <div class="gate-progress">
+      <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      &nbsp; 1 / 最多 4 步
+    </div>
+    <div class="gate-question">你想裝什麼？</div>
+    <div class="gate-desc">這會決定我們要走哪一套安裝流程。</div>
     <div class="gate-btn-row">
-      <button class="gate-btn primary" onclick="gateAnswer(true)">
-        <div class="gate-btn-title">✅ 有帳號，開始設定</div>
-        <div class="gate-btn-hint">繼續填 Git 使用者名稱、email、repo URL</div>
+      <button class="gate-btn primary" onclick="answerQ1('A')">
+        <div class="gate-btn-title">🎁 裝現成的 Claude 設定包</div>
+        <div class="gate-btn-hint">朋友模式：含 handover 等 skills，用別人的 repo 當骨架（可自訂來源）</div>
       </button>
-      <button class="gate-btn" onclick="gateAnswer(false)">
-        <div class="gate-btn-title">❓ 還沒有，教我申請</div>
-        <div class="gate-btn-hint">帶你走 GitHub 註冊流程</div>
+      <button class="gate-btn" onclick="answerQ1('B')">
+        <div class="gate-btn-title">🔧 管理我自己的 .claude</div>
+        <div class="gate-btn-hint">自己有 repo，或想自己建</div>
       </button>
     </div>
   </div>
 
-  <!-- Tutorial：GitHub 註冊教學 -->
+  <!-- ============ Gate Q2: 本地 .claude 狀態 ============ -->
+  <div id="gate-q2" class="section">
+    <div class="gate-progress">
+      <span class="dot done"></span><span class="dot active"></span><span class="dot"></span><span class="dot"></span>
+      &nbsp; 2 / 最多 4 步
+    </div>
+    <div class="gate-question">你這台電腦現在 <code>~/.claude/</code> 資料夾？</div>
+    <div class="gate-desc">（這跟 GitHub 無關，只問本機硬碟上有沒有這個資料夾）</div>
+    <div class="gate-btn-row">
+      <button class="gate-btn" onclick="answerQ2(1)">
+        <div class="gate-btn-title">✅ 有</div>
+        <div class="gate-btn-hint">本機已經用過 Claude Code，裡面已有檔案</div>
+      </button>
+      <button class="gate-btn" onclick="answerQ2(0)">
+        <div class="gate-btn-title">❌ 沒有</div>
+        <div class="gate-btn-hint">全新環境，或還沒用過 Claude Code</div>
+      </button>
+    </div>
+    <button class="back-btn" onclick="goBack('q1')">← 回上一步</button>
+  </div>
+
+  <!-- ============ Gate Q3: GitHub 帳號 ============ -->
+  <div id="gate-q3" class="section">
+    <div class="gate-progress">
+      <span class="dot done"></span><span class="dot done"></span><span class="dot active"></span><span class="dot"></span>
+      &nbsp; 3 / 最多 4 步
+    </div>
+    <div class="gate-question">你有 GitHub 帳號嗎？</div>
+    <div class="gate-desc">這個工具需要把你的 Claude 設定放在 GitHub repo，方便跨裝置同步。</div>
+    <div class="gate-btn-row">
+      <button class="gate-btn primary" onclick="answerQ3(1)">
+        <div class="gate-btn-title">✅ 有帳號</div>
+        <div class="gate-btn-hint">繼續下一步</div>
+      </button>
+      <button class="gate-btn" onclick="answerQ3(0)">
+        <div class="gate-btn-title">❓ 還沒有，教我申請</div>
+        <div class="gate-btn-hint">帶你走 GitHub 7 步註冊流程</div>
+      </button>
+    </div>
+    <button class="back-btn" onclick="goBack('q2')">← 回上一步</button>
+  </div>
+
+  <!-- ============ Gate Q4: .claude GitHub repo ============ -->
+  <div id="gate-q4" class="section">
+    <div class="gate-progress">
+      <span class="dot done"></span><span class="dot done"></span><span class="dot done"></span><span class="dot active"></span>
+      &nbsp; 4 / 4
+    </div>
+    <div class="gate-question">你在 GitHub 上已經有 <code>.claude</code> 的 repo 嗎？</div>
+    <div class="gate-desc">也就是之前是否已經把 <code>~/.claude/</code> 推上 GitHub。</div>
+    <div class="gate-btn-row">
+      <button class="gate-btn primary" onclick="answerQ4(1)">
+        <div class="gate-btn-title">✅ 已經有 repo</div>
+        <div class="gate-btn-hint">等下會請你貼 repo URL</div>
+      </button>
+      <button class="gate-btn" onclick="answerQ4(0)">
+        <div class="gate-btn-title">❌ 還沒建</div>
+        <div class="gate-btn-hint">腳本會用 gh CLI 幫你建一個新 repo</div>
+      </button>
+    </div>
+    <button class="back-btn" onclick="goBack('q3')">← 回上一步</button>
+  </div>
+
+  <!-- ============ Tutorial: GitHub 註冊教學 ============ -->
   <div id="tutorial" class="section">
     <div class="section-title">
       申請 GitHub 帳號 <span class="badge optional">5 分鐘</span>
@@ -243,235 +340,601 @@
     </div>
     <div class="tutorial-step">
       <span class="step-num">7</span>
-      <span class="step-title">建立你的 Claude 設定 repo</span>
+      <span class="step-title">（選擇性）現在去建 <code>.claude</code> repo</span>
       <div class="step-body">
-        右上 "+" → New repository → 名稱建議 <code>.claude</code>（和本地資料夾同名，之後好辨識）→ Private（建議）→ Create。<br>
-        建好後 URL 長這樣：<code>https://github.com/你的名字/.claude.git</code>，就是等下表單要填的 Repo URL。
+        如果你想自己在 GitHub 網頁建 repo：右上 "+" → New repository → 名稱 <code>.claude</code> → Private → Create。<br>
+        <strong>或者不用建</strong>，下一步的安裝腳本會用 <code>gh repo create</code> 幫你自動建。
       </div>
     </div>
     <div class="btn-row" style="margin-top: 20px;">
-      <button class="btn btn-primary" onclick="gateAnswer(true)">✅ 我申請好了，繼續設定</button>
-      <button class="tutorial-back" onclick="showGate()">← 回上一步</button>
+      <button class="btn btn-primary" onclick="tutorialDone()">✅ 我申請好了，繼續</button>
+      <button class="back-btn" onclick="goBack('q3')">← 回上一步</button>
     </div>
   </div>
 
-<div id="main-flow" class="hidden">
-  <!-- 基本設定 -->
-  <div class="section">
-    <div class="section-title">
-      基本設定 <span class="badge required">必填</span>
-    </div>
-    <div class="field">
-      <label for="name">Git Username</label>
-      <input type="text" id="name" placeholder="AlanPai">
-    </div>
-    <div class="field">
-      <label for="email">Git Email (建議用 GitHub noreply)</label>
-      <input type="text" id="email" placeholder="12345678+username@users.noreply.github.com">
-      <div class="hint">到 github.com/settings/emails 開啟 "Keep my email addresses private" 取得</div>
-    </div>
-    <div class="field">
-      <label for="repo">Claude 環境版本控制 Repo (HTTPS)</label>
-      <input type="text" id="repo" placeholder="https://github.com/username/repo-name.git">
-      <div class="hint">說明：新電腦要 clone 哪個 repo 到 ~/.claude/？Private repo 建議用 HTTPS（Git Credential Manager 會處理登入）</div>
-    </div>
-  </div>
+  <!-- ============ Form A: Skill Pack 模式（D4=A）============ -->
+  <div id="form-skill-pack">
+    <div class="state-summary" id="summary-a"></div>
 
-  <!-- Notion 選填 -->
-  <div class="section">
-    <div class="section-title">
-      Notion 交班功能 <span class="badge optional">選填</span>
-    </div>
-    <div class="field">
-      <label for="notion_token">Notion Integration Token</label>
-      <input type="password" id="notion_token" placeholder="ntn_xxxxxxxxxxxxxxxxxxxx">
-      <div class="hint">從 notion.so/my-integrations 取得。不填的話腳本會跳過這步</div>
-    </div>
-    <div class="field">
-      <label for="notion_db">Notion Database ID</label>
-      <input type="text" id="notion_db" placeholder="32 字元 hex（Notion 資料庫 URL 裡的 ID）">
-    </div>
-    <div class="field" style="margin-top: 12px;">
-      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text2); font-size: 13px;">
-        <input type="checkbox" id="notion_in_url" style="width: 16px; height: 16px; cursor: pointer;">
-        產生專屬連結時包含 Notion 憑證
-      </label>
-      <div class="hint" style="color: var(--warn);">⚠️ Token 會出現在網址裡，只建議自己用的書籤，不要分享給別人</div>
-    </div>
-  </div>
-
-  <!-- 按鈕 -->
-  <div class="btn-row">
-    <button class="btn btn-primary" onclick="generate()">📋 產生安裝指令</button>
-    <button class="btn btn-secondary" onclick="generateLink()">🔗 產生專屬連結</button>
-  </div>
-
-  <!-- 專屬連結 -->
-  <div class="output-block" id="link-output">
     <div class="section">
-      <div class="output-header">
-        <span class="output-label">🔗 你的專屬連結</span>
-        <button class="copy-btn" onclick="copyText('link-content', this)">📋 複製</button>
+      <div class="section-title">
+        Skill 包來源 <span class="badge required">必填</span>
       </div>
-      <div class="link-box" id="link-content"></div>
-      <div class="link-hint">💡 書籤存起來，下次換裝置直接開這個連結，欄位自動帶入</div>
+      <div class="field">
+        <label for="skill_pack_url">Skill pack repo URL (HTTPS)</label>
+        <input type="text" id="skill_pack_url" value="https://github.com/AlanPai/.claude.git">
+        <div class="hint">預設是 Alan 的 .claude repo。也可以改成任何人 fork 出的 skill 包</div>
+      </div>
     </div>
-  </div>
 
-  <!-- 安裝指令 -->
-  <div class="output-block" id="script-output">
     <div class="section">
-      <div class="output-header">
-        <span class="output-label">安裝指令</span>
+      <div class="section-title">
+        Git 使用者 <span class="badge required">必填</span>
       </div>
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab('ps')">PowerShell</button>
-        <button class="tab" onclick="switchTab('bash')">Git Bash</button>
+      <div class="field">
+        <label for="a_name">Git Username</label>
+        <input type="text" id="a_name" placeholder="YourName">
       </div>
-      <div class="tab-content active" id="tab-ps">
-        <div style="display:flex; justify-content:flex-end; padding: 8px 0;">
-          <button class="copy-btn" onclick="copyText('ps-code', this)">📋 複製</button>
+      <div class="field">
+        <label for="a_email">Git Email (建議用 GitHub noreply)</label>
+        <input type="text" id="a_email" placeholder="12345678+username@users.noreply.github.com">
+        <div class="hint">到 github.com/settings/emails 開啟 "Keep my email addresses private" 取得</div>
+      </div>
+    </div>
+
+    <div class="section" id="a-user-repo-field">
+      <div class="section-title">
+        你自己的 .claude repo <span class="badge required">Q4=有 時必填</span>
+      </div>
+      <div class="field" id="a-user-repo-existing">
+        <label for="a_user_repo">你的 repo URL (HTTPS)</label>
+        <input type="text" id="a_user_repo" placeholder="https://github.com/你的名字/.claude.git">
+        <div class="hint">clone 完 skill pack 後，把 origin 指向你的 repo，之後 push 自己的修改</div>
+      </div>
+      <div class="field" id="a-user-repo-new">
+        <label for="a_new_repo_name">新 repo 名稱（gh 會幫你建）</label>
+        <input type="text" id="a_new_repo_name" value=".claude">
+        <div class="hint">使用你 GitHub 登入的帳號在名下建立 <code>{帳號}/.claude</code></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        Notion 交班功能 <span class="badge optional">選填</span>
+      </div>
+      <div class="field">
+        <label for="a_notion_token">Notion Integration Token</label>
+        <input type="password" id="a_notion_token" placeholder="ntn_xxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div class="field">
+        <label for="a_notion_db">Notion Database ID</label>
+        <input type="text" id="a_notion_db" placeholder="32 字元 hex">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="generate()">📋 產生安裝指令</button>
+      <button class="back-btn" onclick="goBackToGate()">← 回到選擇流程</button>
+    </div>
+  </div>
+
+  <!-- ============ Form B-existing: 自管 + 有 repo（D4=B, D3=Y）============ -->
+  <div id="form-self-existing">
+    <div class="state-summary" id="summary-be"></div>
+
+    <div class="section">
+      <div class="section-title">
+        基本設定 <span class="badge required">必填</span>
+      </div>
+      <div class="field">
+        <label for="be_name">Git Username</label>
+        <input type="text" id="be_name" placeholder="YourName">
+      </div>
+      <div class="field">
+        <label for="be_email">Git Email (建議用 GitHub noreply)</label>
+        <input type="text" id="be_email" placeholder="12345678+username@users.noreply.github.com">
+        <div class="hint">到 github.com/settings/emails 開啟 "Keep my email addresses private" 取得</div>
+      </div>
+      <div class="field">
+        <label for="be_repo">Claude 環境版本控制 Repo (HTTPS)</label>
+        <input type="text" id="be_repo" placeholder="https://github.com/你的名字/.claude.git">
+        <div class="hint">新電腦要 clone 哪個 repo 到 ~/.claude/？Private repo 建議用 HTTPS</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        Notion 交班功能 <span class="badge optional">選填</span>
+      </div>
+      <div class="field">
+        <label for="be_notion_token">Notion Integration Token</label>
+        <input type="password" id="be_notion_token" placeholder="ntn_xxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div class="field">
+        <label for="be_notion_db">Notion Database ID</label>
+        <input type="text" id="be_notion_db" placeholder="32 字元 hex">
+      </div>
+      <div class="field" style="margin-top: 12px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text2); font-size: 13px;">
+          <input type="checkbox" id="be_notion_in_url" style="width: 16px; height: 16px; cursor: pointer;">
+          產生專屬連結時包含 Notion 憑證
+        </label>
+        <div class="hint" style="color: var(--warn);">⚠️ Token 會出現在網址裡，只建議自己用的書籤，不要分享給別人</div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="generate()">📋 產生安裝指令</button>
+      <button class="btn btn-secondary" onclick="generateLink()">🔗 產生專屬連結</button>
+      <button class="back-btn" onclick="goBackToGate()">← 回到選擇流程</button>
+    </div>
+  </div>
+
+  <!-- ============ Form B-new: 自管 + 沒 repo（D4=B, D3=N）============ -->
+  <div id="form-self-new">
+    <div class="state-summary" id="summary-bn"></div>
+
+    <div class="section">
+      <div class="section-title">
+        基本設定 <span class="badge required">必填</span>
+      </div>
+      <div class="field">
+        <label for="bn_name">Git Username</label>
+        <input type="text" id="bn_name" placeholder="YourName">
+      </div>
+      <div class="field">
+        <label for="bn_email">Git Email (建議用 GitHub noreply)</label>
+        <input type="text" id="bn_email" placeholder="12345678+username@users.noreply.github.com">
+      </div>
+      <div class="field">
+        <label for="bn_new_repo_name">新 repo 名稱</label>
+        <input type="text" id="bn_new_repo_name" value=".claude">
+        <div class="hint">腳本會用 <code>gh repo create</code> 在你帳號下建立 Private repo</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        Notion 交班功能 <span class="badge optional">選填</span>
+      </div>
+      <div class="field">
+        <label for="bn_notion_token">Notion Integration Token</label>
+        <input type="password" id="bn_notion_token" placeholder="ntn_xxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div class="field">
+        <label for="bn_notion_db">Notion Database ID</label>
+        <input type="text" id="bn_notion_db" placeholder="32 字元 hex">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="generate()">📋 產生安裝指令</button>
+      <button class="back-btn" onclick="goBackToGate()">← 回到選擇流程</button>
+    </div>
+  </div>
+
+  <!-- ============ Output 區（link + script）============ -->
+  <div id="output-wrap">
+    <div class="output-block" id="link-output">
+      <div class="section">
+        <div class="output-header">
+          <span class="output-label">🔗 你的專屬連結</span>
+          <button class="copy-btn" onclick="copyText('link-content', this)">📋 複製</button>
         </div>
-        <div class="code-box" id="ps-code"></div>
+        <div class="link-box" id="link-content"></div>
+        <div class="link-hint">💡 書籤存起來，下次換裝置直接開這個連結，欄位自動帶入</div>
       </div>
-      <div class="tab-content" id="tab-bash">
-        <div style="display:flex; justify-content:flex-end; padding: 8px 0;">
-          <button class="copy-btn" onclick="copyText('bash-code', this)">📋 複製</button>
+    </div>
+
+    <div class="output-block" id="script-output">
+      <div class="section">
+        <div class="output-header">
+          <span class="output-label">安裝指令</span>
         </div>
-        <div class="code-box" id="bash-code"></div>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('ps')">PowerShell</button>
+          <button class="tab" onclick="switchTab('bash')">Git Bash</button>
+        </div>
+        <div class="tab-content active" id="tab-ps">
+          <div style="display:flex; justify-content:flex-end; padding: 8px 0;">
+            <button class="copy-btn" onclick="copyText('ps-code', this)">📋 複製</button>
+          </div>
+          <div class="code-box" id="ps-code"></div>
+        </div>
+        <div class="tab-content" id="tab-bash">
+          <div style="display:flex; justify-content:flex-end; padding: 8px 0;">
+            <button class="copy-btn" onclick="copyText('bash-code', this)">📋 複製</button>
+          </div>
+          <div class="code-box" id="bash-code"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 使用說明 -->
+    <div class="section" style="margin-top: 24px; border-color: #21262d;">
+      <div class="section-title">📖 使用方式</div>
+      <div style="font-size: 14px; color: var(--text2); line-height: 2;">
+        <strong style="color: var(--text);">第一次使用：</strong>填入資料 → 按「產生專屬連結」→ 書籤存起來<br>
+        <strong style="color: var(--text);">每次換裝置：</strong>開書籤連結 → 按「產生安裝指令」→ 複製 → 貼到 PowerShell 或 Git Bash<br>
+        <strong style="color: var(--text);">給朋友用：</strong>把這個網頁連結傳給他，讓他從 Q1 開始選
       </div>
     </div>
   </div>
 
-  <!-- 使用說明 -->
-  <div class="section" style="margin-top: 24px; border-color: #21262d;">
-    <div class="section-title">📖 使用方式</div>
-    <div style="font-size: 14px; color: var(--text2); line-height: 2;">
-      <strong style="color: var(--text);">第一次使用：</strong>填入資料 → 按「產生專屬連結」→ 書籤存起來<br>
-      <strong style="color: var(--text);">每次換裝置：</strong>開書籤連結 → 按「產生安裝指令」→ 複製 → 貼到 PowerShell 或 Git Bash<br>
-      <strong style="color: var(--text);">給朋友用：</strong>把這個網頁連結傳給他，讓他填自己的資料產生自己的連結
-    </div>
-  </div>
-</div>
-<!-- end #main-flow -->
 </div>
 
 <script>
-// --- Gate：GitHub 帳號分流 ---
-const GATE_KEY = 'claude-setup-gate-passed';
-function showGate() {
-  document.getElementById('gate').classList.add('visible');
-  document.getElementById('tutorial').classList.remove('visible');
-  document.getElementById('main-flow').classList.add('hidden');
-}
-function showTutorial() {
-  document.getElementById('gate').classList.remove('visible');
-  document.getElementById('tutorial').classList.add('visible');
-  document.getElementById('main-flow').classList.add('hidden');
-}
-function showMainFlow() {
-  document.getElementById('gate').classList.remove('visible');
-  document.getElementById('tutorial').classList.remove('visible');
-  document.getElementById('main-flow').classList.remove('hidden');
-}
-function gateAnswer(hasAccount) {
-  if (hasAccount) {
-    try { localStorage.setItem(GATE_KEY, '1'); } catch {}
-    showMainFlow();
-  } else {
-    showTutorial();
+// ============================================================
+// Global state
+// ============================================================
+const LS_STATE = 'claude-setup-state';
+
+// state.d1: 本地 .claude (0/1), d2: GitHub 帳號 (0/1), d3: .claude repo (0/1), d4: 'A'/'B'
+let state = { d1: null, d2: null, d3: null, d4: null };
+
+// ============================================================
+// Step resolution (12 leaves → 5 generators)
+// ============================================================
+
+// 給定 state，回傳 leaf ID (1-12) 或 null
+function resolveLeaf(s) {
+  if (!s.d4 || s.d1 === null) return null;
+  if (s.d2 === 0) {
+    // D2=無時 D3 視為不適用
+    if (s.d4 === 'A' && s.d1 === 1) return 3;
+    if (s.d4 === 'A' && s.d1 === 0) return 6;
+    if (s.d4 === 'B' && s.d1 === 1) return 9;
+    if (s.d4 === 'B' && s.d1 === 0) return 12;
   }
-}
-(function initGate() {
-  // Bypass conditions: URL has ?gh=1, OR URL has form fields (returning user with bookmark),
-  // OR localStorage flag set.
-  const p = new URLSearchParams(location.search);
-  const hasFormParams = p.get('name') || p.get('email') || p.get('repo');
-  let passed = false;
-  try { passed = localStorage.getItem(GATE_KEY) === '1'; } catch {}
-  if (p.get('gh') === '1' || hasFormParams || passed) {
-    showMainFlow();
-  } else {
-    showGate();
-  }
-})();
-
-// --- URL 參數自動帶入 ---
-(function loadFromURL() {
-  const p = new URLSearchParams(location.search);
-  if (p.get('name'))  document.getElementById('name').value = p.get('name');
-  if (p.get('email')) document.getElementById('email').value = p.get('email');
-  if (p.get('repo'))  document.getElementById('repo').value = p.get('repo');
-  if (p.get('ntoken')) document.getElementById('notion_token').value = p.get('ntoken');
-  if (p.get('ndb'))    document.getElementById('notion_db').value = p.get('ndb');
-})();
-
-// --- 表單驗證 ---
-function validate() {
-  const fields = ['name', 'email', 'repo'];
-  let ok = true;
-  fields.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el.value.trim()) { el.classList.add('error'); ok = false; }
-    else { el.classList.remove('error'); }
-  });
-  if (!ok) alert('請填寫所有必填欄位');
-  return ok;
+  if (s.d3 === null) return null;
+  if (s.d4 === 'A' && s.d1 === 1 && s.d3 === 1) return 1;
+  if (s.d4 === 'A' && s.d1 === 1 && s.d3 === 0) return 2;
+  if (s.d4 === 'A' && s.d1 === 0 && s.d3 === 1) return 4;
+  if (s.d4 === 'A' && s.d1 === 0 && s.d3 === 0) return 5;
+  if (s.d4 === 'B' && s.d1 === 1 && s.d3 === 1) return 7;
+  if (s.d4 === 'B' && s.d1 === 1 && s.d3 === 0) return 8;
+  if (s.d4 === 'B' && s.d1 === 0 && s.d3 === 1) return 10;
+  if (s.d4 === 'B' && s.d1 === 0 && s.d3 === 0) return 11;
+  return null;
 }
 
-// --- 取值 ---
-function getValues() {
-  return {
-    name: document.getElementById('name').value.trim(),
-    email: document.getElementById('email').value.trim(),
-    repo: document.getElementById('repo').value.trim(),
-    notionToken: document.getElementById('notion_token').value.trim(),
-    notionDb: document.getElementById('notion_db').value.trim(),
+// leaf → generator name
+function resolveGenerator(leaf) {
+  const map = {
+    1: 'A_clone', 4: 'A_clone',
+    2: 'A_createRepo', 3: 'A_createRepo', 5: 'A_createRepo', 6: 'A_createRepo',
+    7: 'B_cloneExisting', 10: 'B_cloneExisting',
+    8: 'B_createRepoFromLocal', 9: 'B_createRepoFromLocal',
+    11: 'B_scaffoldFromScratch', 12: 'B_scaffoldFromScratch',
   };
+  return map[leaf];
 }
 
-// --- 產生專屬連結 ---
+// leaf → 哪個 form 顯示
+function resolveForm(leaf) {
+  if ([1, 2, 3, 4, 5, 6].includes(leaf)) return 'form-skill-pack';
+  if ([7, 10].includes(leaf)) return 'form-self-existing';
+  if ([8, 9, 11, 12].includes(leaf)) return 'form-self-new';
+  return null;
+}
+
+// ============================================================
+// Section show/hide
+// ============================================================
+const ALL_SECTIONS = [
+  'gate-q1', 'gate-q2', 'gate-q3', 'gate-q4',
+  'tutorial',
+  'form-skill-pack', 'form-self-existing', 'form-self-new',
+  'output-wrap',
+];
+
+function showOnly(id) {
+  for (const sId of ALL_SECTIONS) {
+    const el = document.getElementById(sId);
+    if (!el) continue;
+    if (sId === id) el.classList.add('visible');
+    else el.classList.remove('visible');
+  }
+  // output-wrap 是獨立顯示的（跟 form 並存），所以在 form 顯示時不動 output-wrap
+  if (id && id.startsWith('form-')) {
+    // 讓 output-wrap 保持現狀（不強制 hide）
+    document.getElementById('output-wrap').classList.remove('visible');
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// Gate Q1-Q4 handlers
+// ============================================================
+function answerQ1(val) {
+  state.d4 = val;
+  saveState();
+  showOnly('gate-q2');
+}
+function answerQ2(val) {
+  state.d1 = val;
+  saveState();
+  showOnly('gate-q3');
+}
+function answerQ3(val) {
+  state.d2 = val;
+  saveState();
+  if (val === 0) {
+    showOnly('tutorial');
+  } else {
+    showOnly('gate-q4');
+  }
+}
+function answerQ4(val) {
+  state.d3 = val;
+  saveState();
+  advanceToForm();
+}
+function tutorialDone() {
+  // 使用者完成教學，d2 視為 1，需要繼續問 Q4
+  state.d2 = 1;
+  saveState();
+  showOnly('gate-q4');
+}
+
+function goBack(target) {
+  // target: 'q1', 'q2', 'q3'
+  if (target === 'q1') { state.d4 = null; showOnly('gate-q1'); }
+  else if (target === 'q2') { state.d1 = null; showOnly('gate-q2'); }
+  else if (target === 'q3') { state.d2 = null; state.d3 = null; showOnly('gate-q3'); }
+  saveState();
+}
+function goBackToGate() {
+  state = { d1: null, d2: null, d3: null, d4: null };
+  saveState();
+  showOnly('gate-q1');
+}
+
+function advanceToForm() {
+  const leaf = resolveLeaf(state);
+  if (!leaf) {
+    console.error('Invalid state, returning to Q1:', state);
+    showOnly('gate-q1');
+    return;
+  }
+  const formId = resolveForm(leaf);
+  populateSummary(leaf);
+  adjustFormFields(leaf);
+  showOnly(formId);
+}
+
+// ============================================================
+// state persistence + deep-link
+// ============================================================
+function saveState() {
+  try { localStorage.setItem(LS_STATE, JSON.stringify(state)); } catch {}
+}
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_STATE) || 'null');
+    if (s && typeof s === 'object') state = { d1: s.d1 ?? null, d2: s.d2 ?? null, d3: s.d3 ?? null, d4: s.d4 ?? null };
+  } catch {}
+}
+function parseUrlState() {
+  const p = new URLSearchParams(location.search);
+  const d4 = p.get('d4');
+  const d1 = p.get('d1'), d2 = p.get('d2'), d3 = p.get('d3');
+  if (d4 === 'A' || d4 === 'B') state.d4 = d4;
+  if (d1 === '0' || d1 === '1') state.d1 = parseInt(d1);
+  if (d2 === '0' || d2 === '1') state.d2 = parseInt(d2);
+  if (d3 === '0' || d3 === '1') state.d3 = parseInt(d3);
+}
+function hasLegacyBookmarkParams() {
+  const p = new URLSearchParams(location.search);
+  return Boolean(p.get('name') || p.get('email') || p.get('repo'));
+}
+
+// ============================================================
+// Summary banner (顯示當前 state)
+// ============================================================
+function populateSummary(leaf) {
+  const d4text = state.d4 === 'A' ? '🎁 裝 Skill 包' : '🔧 管理自己的';
+  const d1text = state.d1 === 1 ? '有本地 .claude' : '沒本地 .claude';
+  const d2text = state.d2 === 1 ? '有 GitHub 帳號' : '剛申請 GitHub 帳號';
+  const d3text = state.d3 === 1 ? '已有 repo' : '尚未建 repo';
+  const html = `
+    <strong>你的選擇：</strong>${d4text} | ${d1text} | ${d2text} | ${d3text}
+    <span style="margin-left:8px;color:var(--text2)">(Leaf ${leaf})</span>
+  `;
+  ['summary-a', 'summary-be', 'summary-bn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+// Form A: 根據 D3 顯示「既有 repo URL」或「新 repo 名稱」
+function adjustFormFields(leaf) {
+  const existingEl = document.getElementById('a-user-repo-existing');
+  const newEl = document.getElementById('a-user-repo-new');
+  if (!existingEl || !newEl) return;
+  if (state.d3 === 1) {
+    existingEl.style.display = '';
+    newEl.style.display = 'none';
+  } else {
+    existingEl.style.display = 'none';
+    newEl.style.display = '';
+  }
+}
+
+// ============================================================
+// URL 參數帶入表單欄位 (legacy bookmark support)
+// ============================================================
+function loadFormFromURL() {
+  const p = new URLSearchParams(location.search);
+  // B-existing form (current bookmark format)
+  if (p.get('name'))  setVal('be_name', p.get('name'));
+  if (p.get('email')) setVal('be_email', p.get('email'));
+  if (p.get('repo'))  setVal('be_repo', p.get('repo'));
+  if (p.get('ntoken')) setVal('be_notion_token', p.get('ntoken'));
+  if (p.get('ndb'))    setVal('be_notion_db', p.get('ndb'));
+}
+function setVal(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.value = v;
+}
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+// ============================================================
+// Values extraction per leaf
+// ============================================================
+function getValues() {
+  const leaf = resolveLeaf(state);
+  const gen = resolveGenerator(leaf);
+  const v = { leaf, generator: gen, state: { ...state } };
+
+  if (gen === 'A_clone' || gen === 'A_createRepo') {
+    v.skillPackUrl = getVal('skill_pack_url') || 'https://github.com/AlanPai/.claude.git';
+    v.name = getVal('a_name');
+    v.email = getVal('a_email');
+    v.notionToken = getVal('a_notion_token');
+    v.notionDb = getVal('a_notion_db');
+    if (state.d3 === 1) v.userRepoUrl = getVal('a_user_repo');
+    else v.newRepoName = getVal('a_new_repo_name') || '.claude';
+  } else if (gen === 'B_cloneExisting') {
+    v.name = getVal('be_name');
+    v.email = getVal('be_email');
+    v.userRepoUrl = getVal('be_repo');
+    v.notionToken = getVal('be_notion_token');
+    v.notionDb = getVal('be_notion_db');
+  } else if (gen === 'B_createRepoFromLocal' || gen === 'B_scaffoldFromScratch') {
+    v.name = getVal('bn_name');
+    v.email = getVal('bn_email');
+    v.newRepoName = getVal('bn_new_repo_name') || '.claude';
+    v.notionToken = getVal('bn_notion_token');
+    v.notionDb = getVal('bn_notion_db');
+  }
+  return v;
+}
+
+function validate(v) {
+  const missing = [];
+  if (!v.name) missing.push('Git Username');
+  if (!v.email) missing.push('Git Email');
+  if (v.generator === 'A_clone' || v.generator === 'A_createRepo') {
+    if (!v.skillPackUrl) missing.push('Skill pack URL');
+    if (state.d3 === 1 && !v.userRepoUrl) missing.push('你自己的 repo URL');
+    if (state.d3 === 0 && !v.newRepoName) missing.push('新 repo 名稱');
+  } else if (v.generator === 'B_cloneExisting') {
+    if (!v.userRepoUrl) missing.push('Repo URL');
+  } else if (v.generator === 'B_createRepoFromLocal' || v.generator === 'B_scaffoldFromScratch') {
+    if (!v.newRepoName) missing.push('新 repo 名稱');
+  }
+  if (missing.length) {
+    alert('請填：' + missing.join('、'));
+    return false;
+  }
+  return true;
+}
+
+// ============================================================
+// 產生專屬連結 (B-existing 才用)
+// ============================================================
 function generateLink() {
-  if (!validate()) return;
   const v = getValues();
-  const params = new URLSearchParams({ name: v.name, email: v.email, repo: v.repo });
-  // 勾選「包含 Notion 憑證」時才寫入 URL
-  const includeNotion = document.getElementById('notion_in_url').checked;
+  if (!validate(v)) return;
+  const params = new URLSearchParams({ name: v.name, email: v.email, repo: v.userRepoUrl });
+  const includeNotion = document.getElementById('be_notion_in_url')?.checked;
   if (includeNotion && v.notionToken) params.set('ntoken', v.notionToken);
   if (includeNotion && v.notionDb)    params.set('ndb', v.notionDb);
   const link = location.origin + location.pathname + '?' + params.toString();
   document.getElementById('link-content').textContent = link;
+  document.getElementById('output-wrap').classList.add('visible');
   document.getElementById('link-output').classList.add('visible');
 }
 
-// --- 產生安裝指令 ---
+// ============================================================
+// 產生安裝指令
+// ============================================================
 function generate() {
-  if (!validate()) return;
   const v = getValues();
-  document.getElementById('ps-code').textContent = genPowerShell(v);
-  document.getElementById('bash-code').textContent = genBash(v);
+  if (!validate(v)) return;
+  const psCode = genByShell('ps', v);
+  const bashCode = genByShell('bash', v);
+  document.getElementById('ps-code').textContent = psCode;
+  document.getElementById('bash-code').textContent = bashCode;
+  document.getElementById('output-wrap').classList.add('visible');
   document.getElementById('script-output').classList.add('visible');
+  // Scroll to output
+  setTimeout(() => {
+    document.getElementById('script-output').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
 }
 
-// --- PowerShell 腳本 ---
-function genPowerShell(v) {
-  const esc = s => s.replace(/'/g, "''");
-  let script = `# ============================================
+function genByShell(shell, v) {
+  const dispatch = {
+    'A_clone':                 { ps: genA_clone_PS,                 bash: genA_clone_Bash },
+    'A_createRepo':            { ps: genA_createRepo_PS,            bash: genA_createRepo_Bash },
+    'B_cloneExisting':         { ps: genB_cloneExisting_PS,         bash: genB_cloneExisting_Bash },
+    'B_createRepoFromLocal':   { ps: genB_createRepoFromLocal_PS,   bash: genB_createRepoFromLocal_Bash },
+    'B_scaffoldFromScratch':   { ps: genB_scaffoldFromScratch_PS,   bash: genB_scaffoldFromScratch_Bash },
+  };
+  const fn = dispatch[v.generator]?.[shell];
+  if (!fn) return '# Unknown generator: ' + v.generator;
+  return fn(v);
+}
+
+// ============================================================
+// Shell escape helpers
+// ============================================================
+const psEsc = s => String(s == null ? '' : s).replace(/'/g, "''");
+const bashEsc = s => String(s == null ? '' : s).replace(/'/g, "'\\''");
+
+// ============================================================
+// Helper: PowerShell header / Bash header
+// ============================================================
+function psHeader(v) {
+  return `# ============================================
 # Claude Config Setup - PowerShell
+# Generator: ${v.generator} (leaf ${v.leaf})
 # ============================================
 $ErrorActionPreference = "Stop"
-$name = '${esc(v.name)}'
-$email = '${esc(v.email)}'
-$repo = '${esc(v.repo)}'
+$name = '${psEsc(v.name)}'
+$email = '${psEsc(v.email)}'
 $claudeDir = "$HOME\\.claude"
 
 Write-Host ""
 Write-Host "  Claude Config Setup" -ForegroundColor Cyan
 Write-Host "  ===================" -ForegroundColor Cyan
+Write-Host "  Path: ${v.generator}" -ForegroundColor Cyan
 Write-Host ""
+`;
+}
 
-# [1/7] Check git
-Write-Host "[1/7] Checking git..." -ForegroundColor Yellow
+function bashHeader(v) {
+  return `#!/bin/bash
+# ============================================
+# Claude Config Setup - Git Bash
+# Generator: ${v.generator} (leaf ${v.leaf})
+# ============================================
+set -e
+
+NAME='${bashEsc(v.name)}'
+EMAIL='${bashEsc(v.email)}'
+CLAUDE_DIR="$HOME/.claude"
+
+echo ""
+echo "  Claude Config Setup"
+echo "  ==================="
+echo "  Path: ${v.generator}"
+echo ""
+`;
+}
+
+// ============================================================
+// Helper: step prefix functions (PS and Bash)
+// ============================================================
+function psPrefix_git(stepNum, totalSteps) {
+  return `
+# [${stepNum}/${totalSteps}] Check git
+Write-Host "[${stepNum}/${totalSteps}] Checking git..." -ForegroundColor Yellow
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Host "  Git not found. Installing via winget..." -ForegroundColor Yellow
     winget install --id Git.Git -e --accept-package-agreements --accept-source-agreements
@@ -482,21 +945,32 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     }
 }
 Write-Host "  OK - $(git --version)" -ForegroundColor Green
+`;
+}
 
-# [2/7] Check Node.js (needed for handover/resume skills)
-Write-Host "[2/7] Checking Node.js..." -ForegroundColor Yellow
+function bashPrefix_git(stepNum, totalSteps) {
+  return `
+# [${stepNum}/${totalSteps}] Check git
+echo "[${stepNum}/${totalSteps}] Checking git..."
+if ! command -v git &>/dev/null; then
+    echo "  FAILED: Git is not installed."
+    echo "  Please install from https://git-scm.com/download/win"
+    exit 1
+fi
+echo "  OK - $(git --version)"
+`;
+}
+
+function psPrefix_node(stepNum, totalSteps) {
+  return `
+# [${stepNum}/${totalSteps}] Check Node.js
+Write-Host "[${stepNum}/${totalSteps}] Checking Node.js..." -ForegroundColor Yellow
 if (!(Get-Command node -ErrorAction SilentlyContinue)) {
     Write-Host "  Node.js not found. Installing LTS via winget..." -ForegroundColor Yellow
     winget install OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
-    # Refresh PATH from registry
     $env:PATH = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
-    # Fallback: scan known locations
     if (!(Get-Command node -ErrorAction SilentlyContinue)) {
-        $candidates = @(
-            "C:\\Program Files\\nodejs",
-            "C:\\Program Files (x86)\\nodejs",
-            "$env:LOCALAPPDATA\\Programs\\nodejs"
-        )
+        $candidates = @("C:\\Program Files\\nodejs", "C:\\Program Files (x86)\\nodejs", "$env:LOCALAPPDATA\\Programs\\nodejs")
         foreach ($p in $candidates) {
             if (Test-Path "$p\\node.exe") { $env:PATH += ";$p"; break }
         }
@@ -507,34 +981,146 @@ if (!(Get-Command node -ErrorAction SilentlyContinue)) {
     }
 }
 Write-Host "  OK - $(node --version)" -ForegroundColor Green
+`;
+}
 
-# [3/7] Backup existing .claude
-Write-Host "[3/7] Checking existing .claude..." -ForegroundColor Yellow
+function bashPrefix_node(stepNum, totalSteps) {
+  return `
+# [${stepNum}/${totalSteps}] Check Node.js
+echo "[${stepNum}/${totalSteps}] Checking Node.js..."
+if ! command -v node &>/dev/null; then
+    echo "  Node.js not found. Installing LTS via winget..."
+    winget install OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
+    FRESH_MACHINE=$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','Machine')" | tr -d '\\r')
+    FRESH_USER=$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','User')" | tr -d '\\r')
+    export PATH="$(cygpath -u -p "$FRESH_MACHINE"):$(cygpath -u -p "$FRESH_USER"):$PATH"
+    if ! command -v node &>/dev/null; then
+        for p in \\
+            "/c/Program Files/nodejs" \\
+            "/c/Program Files (x86)/nodejs" \\
+            "$LOCALAPPDATA/Programs/nodejs" \\
+            "$HOME/AppData/Local/Programs/nodejs"; do
+            if [ -x "$p/node.exe" ]; then export PATH="$PATH:$p"; break; fi
+        done
+    fi
+    if ! command -v node &>/dev/null; then
+        echo "  WARNING: Node installed but not found. Restart Git Bash and re-run."
+        exit 1
+    fi
+fi
+echo "  OK - $(node --version)"
+`;
+}
+
+function psPrefix_gh(stepNum, totalSteps) {
+  return `
+# [${stepNum}/${totalSteps}] Check gh CLI + auth
+Write-Host "[${stepNum}/${totalSteps}] Checking GitHub CLI..." -ForegroundColor Yellow
+if (!(Get-Command gh -ErrorAction SilentlyContinue)) {
+    Write-Host "  gh not found. Installing via winget..." -ForegroundColor Yellow
+    winget install GitHub.cli -e --accept-package-agreements --accept-source-agreements
+    $env:PATH = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
+    if (!(Get-Command gh -ErrorAction SilentlyContinue)) {
+        foreach ($p in @("C:\\Program Files\\GitHub CLI", "C:\\Program Files (x86)\\GitHub CLI")) {
+            if (Test-Path "$p\\gh.exe") { $env:PATH += ";$p"; break }
+        }
+    }
+    if (!(Get-Command gh -ErrorAction SilentlyContinue)) {
+        Write-Host "  WARNING: gh installed but not in PATH. Restart PowerShell and re-run." -ForegroundColor Yellow
+        exit 1
+    }
+}
+Write-Host "  OK - gh $((gh --version | Select-Object -First 1))" -ForegroundColor Green
+
+# gh auth 檢查
+gh auth status 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  Opening browser for GitHub login..." -ForegroundColor Yellow
+    gh auth login --web --git-protocol https
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  FAILED: gh auth login didn't complete" -ForegroundColor Red
+        exit 1
+    }
+}
+Write-Host "  OK - gh authenticated" -ForegroundColor Green
+`;
+}
+
+function bashPrefix_gh(stepNum, totalSteps) {
+  return `
+# [${stepNum}/${totalSteps}] Check gh CLI + auth
+echo "[${stepNum}/${totalSteps}] Checking GitHub CLI..."
+if ! command -v gh &>/dev/null; then
+    echo "  gh not found. Installing via winget..."
+    winget install GitHub.cli -e --accept-package-agreements --accept-source-agreements
+    FRESH_MACHINE=$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','Machine')" | tr -d '\\r')
+    export PATH="$(cygpath -u -p "$FRESH_MACHINE"):$PATH"
+    if ! command -v gh &>/dev/null; then
+        for p in "/c/Program Files/GitHub CLI" "/c/Program Files (x86)/GitHub CLI"; do
+            if [ -x "$p/gh.exe" ]; then export PATH="$PATH:$p"; break; fi
+        done
+    fi
+    if ! command -v gh &>/dev/null; then
+        echo "  WARNING: gh installed but not found. Restart Git Bash and re-run."
+        exit 1
+    fi
+fi
+echo "  OK - $(gh --version | head -1)"
+
+# gh auth check
+if ! gh auth status &>/dev/null; then
+    echo "  Opening browser for GitHub login..."
+    gh auth login --web --git-protocol https
+fi
+echo "  OK - gh authenticated"
+`;
+}
+
+// ============================================================
+// Helper: backup existing .claude
+// ============================================================
+function psStep_backup(stepNum, totalSteps) {
+  return `
+# [${stepNum}/${totalSteps}] Backup existing .claude
+Write-Host "[${stepNum}/${totalSteps}] Checking existing .claude..." -ForegroundColor Yellow
 if (Test-Path $claudeDir) {
     $bak = "$claudeDir.bak." + (Get-Date -Format yyyyMMddHHmmss)
     Rename-Item $claudeDir $bak
     Write-Host "  Backed up to $bak" -ForegroundColor Yellow
 } else {
-    Write-Host "  No existing .claude found (clean install)" -ForegroundColor Green
+    Write-Host "  No existing .claude found" -ForegroundColor Green
+}
+`;
 }
 
-# [4/7] Clone
-Write-Host "[4/7] Cloning $repo ..." -ForegroundColor Yellow
-git clone $repo $claudeDir
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  FAILED: Check repo URL and GitHub permissions" -ForegroundColor Red
-    exit 1
+function bashStep_backup(stepNum, totalSteps) {
+  return `
+# [${stepNum}/${totalSteps}] Backup existing .claude
+echo "[${stepNum}/${totalSteps}] Checking existing .claude..."
+if [ -d "$CLAUDE_DIR" ]; then
+    BAK="$CLAUDE_DIR.bak.$(date +%s)"
+    mv "$CLAUDE_DIR" "$BAK"
+    echo "  Backed up to $BAK"
+else
+    echo "  No existing .claude found"
+fi
+`;
 }
-Write-Host "  OK - Clone complete" -ForegroundColor Green
 
-# [5/7] Git identity
-Write-Host "[5/7] Setting git identity..." -ForegroundColor Yellow
+// ============================================================
+// Helper: identity + aliases + notion suffix
+// ============================================================
+function psSuffix(stepNumStart, totalSteps, v, hasHandoverSkill) {
+  // stepNumStart 是 identity 的步號；aliases、notion 依序累加
+  let out = `
+# [${stepNumStart}/${totalSteps}] Git identity
+Write-Host "[${stepNumStart}/${totalSteps}] Setting git identity..." -ForegroundColor Yellow
 git config --global user.name $name
 git config --global user.email $email
 Write-Host "  OK - $name <$email>" -ForegroundColor Green
 
-# [6/7] PowerShell aliases
-Write-Host "[6/7] Setting up aliases (cpush/cpull/cstatus)..." -ForegroundColor Yellow
+# [${stepNumStart + 1}/${totalSteps}] PowerShell aliases
+Write-Host "[${stepNumStart + 1}/${totalSteps}] Setting up aliases (cpush/cpull/cstatus)..." -ForegroundColor Yellow
 $profileDir = Split-Path $PROFILE
 if (!(Test-Path $profileDir)) { New-Item $profileDir -ItemType Directory -Force | Out-Null }
 if (!(Test-Path $PROFILE)) { New-Item $PROFILE -Force | Out-Null }
@@ -553,158 +1139,72 @@ if (!(Select-String -Path $PROFILE -Pattern "Claude Config Sync" -Quiet -ErrorAc
     Write-Host "  OK - Added to $PROFILE" -ForegroundColor Green
 } else {
     Write-Host "  Skipped - aliases already exist" -ForegroundColor Gray
-}`;
+}
+`;
 
-  // Notion block
+  // Notion step
+  const notionStep = stepNumStart + 2;
   if (v.notionToken && v.notionDb) {
-    script += `
-
-# [7/7] Notion credentials
-Write-Host "[7/7] Writing Notion credentials..." -ForegroundColor Yellow
+    out += `
+# [${notionStep}/${totalSteps}] Notion credentials
+Write-Host "[${notionStep}/${totalSteps}] Writing Notion credentials..." -ForegroundColor Yellow
 $envContent = @"
-NOTION_HANDOVER_TOKEN=${esc(v.notionToken)}
-NOTION_HANDOVER_DB_ID=${esc(v.notionDb)}
+NOTION_HANDOVER_TOKEN=${psEsc(v.notionToken)}
+NOTION_HANDOVER_DB_ID=${psEsc(v.notionDb)}
 "@
 $envPath = "$claudeDir\\skills\\handover\\.env"
 if (Test-Path (Split-Path $envPath)) {
     Set-Content $envPath $envContent
     Write-Host "  OK - Written to $envPath" -ForegroundColor Green
-    # Auto-verify
     $verifyScript = "$claudeDir\\skills\\handover\\scripts\\verify.mjs"
     if (Test-Path $verifyScript) {
-        Write-Host "  Verifying Notion credentials..." -ForegroundColor Yellow
-        $verifyOut = & node $verifyScript 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "  Verified - handover ready to use" -ForegroundColor Green
-        } else {
-            Write-Host "  Verify failed - run: node $verifyScript" -ForegroundColor Yellow
-        }
+        Write-Host "  Verifying..." -ForegroundColor Yellow
+        & node $verifyScript | Out-Null
+        if ($LASTEXITCODE -eq 0) { Write-Host "  Verified - handover ready" -ForegroundColor Green }
+        else { Write-Host "  Verify failed - run: node $verifyScript" -ForegroundColor Yellow }
     }
 } else {
-    Write-Host "  Skipped - handover skill not found in repo" -ForegroundColor Gray
-}`;
+    Write-Host "  Skipped - handover skill not in repo. Credentials not written." -ForegroundColor Yellow
+    Write-Host "  Tip: merge Alan's skill pack later to enable handover" -ForegroundColor Gray
+}
+`;
   } else {
-    script += `
-
-# [7/7] Notion credentials
-Write-Host "[7/7] Notion credentials - skipped (not provided)" -ForegroundColor Gray
-Write-Host "  Tip: want handover sync later? Run:" -ForegroundColor Gray
-Write-Host "    node $claudeDir\\skills\\handover\\scripts\\setup.mjs" -ForegroundColor Cyan`;
+    out += `
+# [${notionStep}/${totalSteps}] Notion credentials
+Write-Host "[${notionStep}/${totalSteps}] Notion credentials - skipped (not provided)" -ForegroundColor Gray
+`;
+    if (hasHandoverSkill) {
+      out += `Write-Host "  Tip: want handover sync later? Run:" -ForegroundColor Gray
+Write-Host "    node $claudeDir\\skills\\handover\\scripts\\setup.mjs" -ForegroundColor Cyan
+`;
+    }
   }
-
-  script += `
-
-# === Done! ===
-Write-Host ""
-Write-Host "  Setup complete!" -ForegroundColor Green
-Write-Host ""
-Write-Host "  Location : $claudeDir" -ForegroundColor White
-Write-Host "  Repo     : $repo" -ForegroundColor White
-Write-Host ""
-Get-ChildItem $claudeDir -Name
-Write-Host ""
-Write-Host "  Quick commands (restart PowerShell first):" -ForegroundColor Cyan
-Write-Host "    cpush   - push config to GitHub"
-Write-Host "    cpull   - pull latest config"
-Write-Host "    cstatus - check status"
-Write-Host ""`;
-
-  return script;
+  return out;
 }
 
-// --- Git Bash 腳本 ---
-function genBash(v) {
-  const esc = s => s.replace(/'/g, "'\\''");
-  let script = `#!/bin/bash
-# ============================================
-# Claude Config Setup - Git Bash
-# ============================================
-set -e
-
-NAME='${esc(v.name)}'
-EMAIL='${esc(v.email)}'
-REPO='${esc(v.repo)}'
-CLAUDE_DIR="$HOME/.claude"
-
-echo ""
-echo "  Claude Config Setup"
-echo "  ==================="
-echo ""
-
-# [1/7] Check git
-echo "[1/7] Checking git..."
-if ! command -v git &>/dev/null; then
-    echo "  FAILED: Git is not installed."
-    echo "  Please install from https://git-scm.com/download/win"
-    exit 1
-fi
-echo "  OK - $(git --version)"
-
-# [2/7] Check Node.js (needed for handover/resume skills)
-echo "[2/7] Checking Node.js..."
-if ! command -v node &>/dev/null; then
-    echo "  Node.js not found. Installing LTS via winget..."
-    winget install OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
-    # Refresh PATH from registry (method A)
-    FRESH_MACHINE=$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','Machine')" | tr -d '\\r')
-    FRESH_USER=$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','User')" | tr -d '\\r')
-    export PATH="$(cygpath -u -p "$FRESH_MACHINE"):$(cygpath -u -p "$FRESH_USER"):$PATH"
-    # Fallback: scan known locations (method B)
-    if ! command -v node &>/dev/null; then
-        for p in \\
-            "/c/Program Files/nodejs" \\
-            "/c/Program Files (x86)/nodejs" \\
-            "$LOCALAPPDATA/Programs/nodejs" \\
-            "$HOME/AppData/Local/Programs/nodejs"; do
-            if [ -x "$p/node.exe" ]; then
-                export PATH="$PATH:$p"
-                break
-            fi
-        done
-    fi
-    if ! command -v node &>/dev/null; then
-        echo "  WARNING: Node installed but not found. Restart Git Bash and re-run."
-        exit 1
-    fi
-fi
-echo "  OK - $(node --version)"
-
-# [3/7] Backup existing .claude
-echo "[3/7] Checking existing .claude..."
-if [ -d "$CLAUDE_DIR" ]; then
-    BAK="$CLAUDE_DIR.bak.$(date +%s)"
-    mv "$CLAUDE_DIR" "$BAK"
-    echo "  Backed up to $BAK"
-else
-    echo "  No existing .claude found (clean install)"
-fi
-
-# [4/7] Clone
-echo "[4/7] Cloning $REPO ..."
-git clone "$REPO" "$CLAUDE_DIR"
-echo "  OK - Clone complete"
-
-# [5/7] Git identity
-echo "[5/7] Setting git identity..."
+function bashSuffix(stepNumStart, totalSteps, v, hasHandoverSkill) {
+  let out = `
+# [${stepNumStart}/${totalSteps}] Git identity
+echo "[${stepNumStart}/${totalSteps}] Setting git identity..."
 git config --global user.name "$NAME"
 git config --global user.email "$EMAIL"
 echo "  OK - $NAME <$EMAIL>"
 
-# [6/7] Bash aliases
-echo "[6/7] Setting up aliases (cpush/cpull/cstatus)..."
+# [${stepNumStart + 1}/${totalSteps}] Bash aliases
+echo "[${stepNumStart + 1}/${totalSteps}] Setting up aliases (cpush/cpull/cstatus)..."
 ALIAS_LINE='[ -f ~/.claude/shell-aliases.sh ] && source ~/.claude/shell-aliases.sh'
 if ! grep -q "shell-aliases.sh" ~/.bashrc 2>/dev/null; then
     echo "$ALIAS_LINE" >> ~/.bashrc
     echo "  OK - Added source to ~/.bashrc"
 else
     echo "  Skipped - already in ~/.bashrc"
-fi`;
-
+fi
+`;
+  const notionStep = stepNumStart + 2;
   if (v.notionToken && v.notionDb) {
-    script += `
-
-# [7/7] Notion credentials
-echo "[7/7] Writing Notion credentials..."
+    out += `
+# [${notionStep}/${totalSteps}] Notion credentials
+echo "[${notionStep}/${totalSteps}] Writing Notion credentials..."
 ENV_PATH="$CLAUDE_DIR/skills/handover/.env"
 if [ -d "$(dirname "$ENV_PATH")" ]; then
     cat > "$ENV_PATH" << 'ENVEOF'
@@ -712,49 +1212,493 @@ NOTION_HANDOVER_TOKEN=${v.notionToken}
 NOTION_HANDOVER_DB_ID=${v.notionDb}
 ENVEOF
     echo "  OK - Written to $ENV_PATH"
-    # Auto-verify
     VERIFY_SCRIPT="$CLAUDE_DIR/skills/handover/scripts/verify.mjs"
     if [ -f "$VERIFY_SCRIPT" ]; then
-        echo "  Verifying Notion credentials..."
         if node "$VERIFY_SCRIPT" >/dev/null 2>&1; then
-            echo "  Verified - handover ready to use"
+            echo "  Verified - handover ready"
         else
             echo "  Verify failed - run: node $VERIFY_SCRIPT"
         fi
     fi
 else
-    echo "  Skipped - handover skill not found in repo"
-fi`;
+    echo "  Skipped - handover skill not in repo. Credentials not written."
+    echo "  Tip: merge Alan's skill pack later to enable handover"
+fi
+`;
   } else {
-    script += `
-
-# [7/7] Notion credentials
-echo "[7/7] Notion credentials - skipped (not provided)"
-echo "  Tip: want handover sync later? Run:"
-echo "    node $CLAUDE_DIR/skills/handover/scripts/setup.mjs"`;
+    out += `
+# [${notionStep}/${totalSteps}] Notion credentials
+echo "[${notionStep}/${totalSteps}] Notion credentials - skipped (not provided)"
+`;
+    if (hasHandoverSkill) {
+      out += `echo "  Tip: want handover sync later? Run:"
+echo "    node $CLAUDE_DIR/skills/handover/scripts/setup.mjs"
+`;
+    }
   }
+  return out;
+}
 
-  script += `
-
+// ============================================================
+// Footer
+// ============================================================
+function psFooter(repoLabel) {
+  return `
+# === Done! ===
+Write-Host ""
+Write-Host "  Setup complete!" -ForegroundColor Green
+Write-Host ""
+Write-Host "  Location : $claudeDir" -ForegroundColor White
+Write-Host "  ${repoLabel}" -ForegroundColor White
+Write-Host ""
+Write-Host "  Quick commands (restart PowerShell first):" -ForegroundColor Cyan
+Write-Host "    cpush / cpull / cstatus / cdiff / clog"
+Write-Host ""
+`;
+}
+function bashFooter(repoLabel) {
+  return `
 # === Done! ===
 echo ""
 echo "  Setup complete!"
 echo ""
 echo "  Location : $CLAUDE_DIR"
-echo "  Repo     : $REPO"
-echo ""
-ls "$CLAUDE_DIR"
+echo "  ${repoLabel}"
 echo ""
 echo "  Quick commands (restart Git Bash first):"
-echo "    cpush   - push config to GitHub"
-echo "    cpull   - pull latest config"
-echo "    cstatus - check status"
-echo ""`;
-
-  return script;
+echo "    cpush / cpull / cstatus"
+echo ""
+`;
 }
 
-// --- Tab 切換 ---
+// ============================================================
+// Minimal scaffold content (inlined from AlanPai/.claude/.gitignore)
+// ============================================================
+const MIN_GITIGNORE = `# 預設全部忽略
+/*
+
+# 白名單：只追蹤這些
+!.gitignore
+!.gitattributes
+!README.md
+!shell-aliases.sh
+!CLAUDE.md
+!settings.json
+!settings.local.json.example
+!commands/
+!skills/
+!hooks/
+!agents/
+!plugins/
+
+# plugins 只要 blocklist.json，忽略其他
+plugins/*
+!plugins/blocklist.json
+
+# skills 內排除 sqlite
+skills/**/*.db
+skills/**/*.sqlite
+skills/**/*.sqlite3
+
+# 通用敏感檔兜底
+.env
+.env.*
+*.key
+*.pem
+*_secret*
+*_token*
+credentials*
+settings.local.json
+`;
+
+const MIN_CLAUDE_MD = `# Claude Code 全域記憶
+
+（這裡放你希望 Claude 每次對話都記得的事情）
+
+Examples:
+- Preferred language: 繁體中文
+- Code style: 2-space indent, prefer functional over OOP
+`;
+
+const MIN_SETTINGS_JSON = `{
+  "model": "sonnet"
+}
+`;
+
+// ============================================================
+// Generator 1: genA_clone_PS / genA_clone_Bash (leaf 1, 4)
+// ============================================================
+function genA_clone_PS(v) {
+  const total = 7;
+  const hasBackup = (v.state.d1 === 1);
+  let s = psHeader(v);
+  s += psPrefix_git(1, total);
+  s += psPrefix_node(2, total);
+  if (hasBackup) s += psStep_backup(3, total);
+  else s += `
+# [3/${total}] Backup existing .claude
+Write-Host "[3/${total}] Skipped (no local .claude)" -ForegroundColor Green
+`;
+  s += `
+# [4/${total}] Clone skill pack
+Write-Host "[4/${total}] Cloning skill pack from ${v.skillPackUrl} ..." -ForegroundColor Yellow
+git clone '${psEsc(v.skillPackUrl)}' $claudeDir
+if ($LASTEXITCODE -ne 0) { Write-Host "  FAILED: check skill pack URL" -ForegroundColor Red; exit 1 }
+Write-Host "  OK - Clone complete" -ForegroundColor Green
+
+# [5/${total}] Rewire remotes (origin → your repo, upstream → skill pack)
+Write-Host "[5/${total}] Rewiring remotes..." -ForegroundColor Yellow
+git -C $claudeDir remote remove origin 2>$null
+git -C $claudeDir remote add upstream '${psEsc(v.skillPackUrl)}'
+git -C $claudeDir remote add origin '${psEsc(v.userRepoUrl)}'
+Write-Host "  OK - origin: ${v.userRepoUrl}" -ForegroundColor Green
+Write-Host "       upstream: ${v.skillPackUrl}" -ForegroundColor Green
+`;
+  s += psSuffix(6, total, v, /*hasHandoverSkill*/ true);
+  s += psFooter(`Skill pack: ${v.skillPackUrl}`);
+  return s;
+}
+
+function genA_clone_Bash(v) {
+  const total = 7;
+  const hasBackup = (v.state.d1 === 1);
+  let s = bashHeader(v);
+  s += bashPrefix_git(1, total);
+  s += bashPrefix_node(2, total);
+  if (hasBackup) s += bashStep_backup(3, total);
+  else s += `
+# [3/${total}] Backup existing .claude
+echo "[3/${total}] Skipped (no local .claude)"
+`;
+  s += `
+# [4/${total}] Clone skill pack
+echo "[4/${total}] Cloning skill pack from ${v.skillPackUrl} ..."
+git clone '${bashEsc(v.skillPackUrl)}' "$CLAUDE_DIR"
+echo "  OK - Clone complete"
+
+# [5/${total}] Rewire remotes
+echo "[5/${total}] Rewiring remotes..."
+git -C "$CLAUDE_DIR" remote remove origin 2>/dev/null || true
+git -C "$CLAUDE_DIR" remote add upstream '${bashEsc(v.skillPackUrl)}'
+git -C "$CLAUDE_DIR" remote add origin '${bashEsc(v.userRepoUrl)}'
+echo "  OK - origin: ${v.userRepoUrl}"
+echo "       upstream: ${v.skillPackUrl}"
+`;
+  s += bashSuffix(6, total, v, true);
+  s += bashFooter(`Skill pack: ${v.skillPackUrl}`);
+  return s;
+}
+
+// ============================================================
+// Generator 2: genA_createRepo_PS / genA_createRepo_Bash (leaf 2, 3, 5, 6)
+// ============================================================
+function genA_createRepo_PS(v) {
+  const total = 8;
+  const hasBackup = (v.state.d1 === 1);
+  let s = psHeader(v);
+  s += psPrefix_git(1, total);
+  s += psPrefix_node(2, total);
+  s += psPrefix_gh(3, total);
+  if (hasBackup) s += psStep_backup(4, total);
+  else s += `
+# [4/${total}] Backup existing .claude
+Write-Host "[4/${total}] Skipped (no local .claude)" -ForegroundColor Green
+`;
+  s += `
+# [5/${total}] Clone skill pack
+Write-Host "[5/${total}] Cloning skill pack from ${v.skillPackUrl} ..." -ForegroundColor Yellow
+git clone '${psEsc(v.skillPackUrl)}' $claudeDir
+if ($LASTEXITCODE -ne 0) { Write-Host "  FAILED: check skill pack URL" -ForegroundColor Red; exit 1 }
+Write-Host "  OK - Clone complete" -ForegroundColor Green
+
+# [6/${total}] Create your repo and rewire remotes
+Write-Host "[6/${total}] Creating your repo via gh..." -ForegroundColor Yellow
+git -C $claudeDir remote remove origin 2>$null
+git -C $claudeDir remote add upstream '${psEsc(v.skillPackUrl)}'
+Push-Location $claudeDir
+gh repo create '${psEsc(v.newRepoName)}' --private --source=. --remote=origin --push
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  FAILED: gh repo create (maybe name collision). Try a different name." -ForegroundColor Red
+    Pop-Location; exit 1
+}
+Pop-Location
+Write-Host "  OK - repo created and pushed" -ForegroundColor Green
+`;
+  s += psSuffix(7, total, v, true);
+  s += psFooter(`Skill pack: ${v.skillPackUrl} → your repo: ${v.newRepoName}`);
+  return s;
+}
+
+function genA_createRepo_Bash(v) {
+  const total = 8;
+  const hasBackup = (v.state.d1 === 1);
+  let s = bashHeader(v);
+  s += bashPrefix_git(1, total);
+  s += bashPrefix_node(2, total);
+  s += bashPrefix_gh(3, total);
+  if (hasBackup) s += bashStep_backup(4, total);
+  else s += `
+# [4/${total}] Backup existing .claude
+echo "[4/${total}] Skipped (no local .claude)"
+`;
+  s += `
+# [5/${total}] Clone skill pack
+echo "[5/${total}] Cloning skill pack from ${v.skillPackUrl} ..."
+git clone '${bashEsc(v.skillPackUrl)}' "$CLAUDE_DIR"
+echo "  OK - Clone complete"
+
+# [6/${total}] Create your repo and rewire remotes
+echo "[6/${total}] Creating your repo via gh..."
+git -C "$CLAUDE_DIR" remote remove origin 2>/dev/null || true
+git -C "$CLAUDE_DIR" remote add upstream '${bashEsc(v.skillPackUrl)}'
+cd "$CLAUDE_DIR"
+gh repo create '${bashEsc(v.newRepoName)}' --private --source=. --remote=origin --push
+cd - >/dev/null
+echo "  OK - repo created and pushed"
+`;
+  s += bashSuffix(7, total, v, true);
+  s += bashFooter(`Skill pack: ${v.skillPackUrl} → your repo: ${v.newRepoName}`);
+  return s;
+}
+
+// ============================================================
+// Generator 3: genB_cloneExisting_PS / Bash (leaf 7, 10) — 現有主流程
+// ============================================================
+function genB_cloneExisting_PS(v) {
+  const total = 7;
+  const hasBackup = (v.state.d1 === 1);
+  let s = psHeader(v);
+  s += `$repo = '${psEsc(v.userRepoUrl)}'\n`;
+  s += psPrefix_git(1, total);
+  s += psPrefix_node(2, total);
+  if (hasBackup) s += psStep_backup(3, total);
+  else s += `
+# [3/${total}] Backup existing .claude
+Write-Host "[3/${total}] Skipped (no local .claude)" -ForegroundColor Green
+`;
+  s += `
+# [4/${total}] Clone
+Write-Host "[4/${total}] Cloning $repo ..." -ForegroundColor Yellow
+git clone $repo $claudeDir
+if ($LASTEXITCODE -ne 0) { Write-Host "  FAILED: check repo URL and permissions" -ForegroundColor Red; exit 1 }
+Write-Host "  OK - Clone complete" -ForegroundColor Green
+`;
+  s += psSuffix(5, total, v, true);
+  s += psFooter(`Repo     : $repo`);
+  return s;
+}
+
+function genB_cloneExisting_Bash(v) {
+  const total = 7;
+  const hasBackup = (v.state.d1 === 1);
+  let s = bashHeader(v);
+  s += `REPO='${bashEsc(v.userRepoUrl)}'\n`;
+  s += bashPrefix_git(1, total);
+  s += bashPrefix_node(2, total);
+  if (hasBackup) s += bashStep_backup(3, total);
+  else s += `
+# [3/${total}] Backup existing .claude
+echo "[3/${total}] Skipped (no local .claude)"
+`;
+  s += `
+# [4/${total}] Clone
+echo "[4/${total}] Cloning $REPO ..."
+git clone "$REPO" "$CLAUDE_DIR"
+echo "  OK - Clone complete"
+`;
+  s += bashSuffix(5, total, v, true);
+  s += bashFooter(`Repo     : $REPO`);
+  return s;
+}
+
+// ============================================================
+// Generator 4: genB_createRepoFromLocal_PS / Bash (leaf 8, 9)
+// ============================================================
+function genB_createRepoFromLocal_PS(v) {
+  const total = 7;
+  let s = psHeader(v);
+  s += psPrefix_git(1, total);
+  s += psPrefix_node(2, total);
+  s += psPrefix_gh(3, total);
+  s += `
+# [4/${total}] Ensure local .claude is a git repo and has a commit
+Write-Host "[4/${total}] Preparing local .claude for push..." -ForegroundColor Yellow
+if (!(Test-Path $claudeDir)) {
+    Write-Host "  FAILED: ~/.claude does not exist. Expected local directory for this flow." -ForegroundColor Red
+    exit 1
+}
+if (!(Test-Path "$claudeDir\\.git")) {
+    Write-Host "  Initializing git repo..." -ForegroundColor Yellow
+    git -C $claudeDir init -b main
+    git -C $claudeDir add -A
+    git -C $claudeDir commit -m "initial .claude"
+} else {
+    Write-Host "  git repo exists. Committing any pending changes..." -ForegroundColor Yellow
+    git -C $claudeDir add -A
+    $d = (Get-Date -Format yyyy-MM-dd)
+    git -C $claudeDir commit -m "sync: $d" 2>$null
+}
+Write-Host "  OK" -ForegroundColor Green
+
+# [5/${total}] Create remote repo and push
+Write-Host "[5/${total}] Creating GitHub repo '${v.newRepoName}' and pushing..." -ForegroundColor Yellow
+Push-Location $claudeDir
+gh repo create '${psEsc(v.newRepoName)}' --private --source=. --remote=origin --push
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  FAILED: gh repo create. Maybe name collision?" -ForegroundColor Red
+    Pop-Location; exit 1
+}
+Pop-Location
+Write-Host "  OK - repo created and pushed" -ForegroundColor Green
+`;
+  s += psSuffix(6, total, v, true);
+  s += psFooter(`Repo     : gh:${v.newRepoName}`);
+  return s;
+}
+
+function genB_createRepoFromLocal_Bash(v) {
+  const total = 7;
+  let s = bashHeader(v);
+  s += bashPrefix_git(1, total);
+  s += bashPrefix_node(2, total);
+  s += bashPrefix_gh(3, total);
+  s += `
+# [4/${total}] Ensure local .claude is a git repo and has a commit
+echo "[4/${total}] Preparing local .claude for push..."
+if [ ! -d "$CLAUDE_DIR" ]; then
+    echo "  FAILED: ~/.claude does not exist."
+    exit 1
+fi
+if [ ! -d "$CLAUDE_DIR/.git" ]; then
+    echo "  Initializing git repo..."
+    git -C "$CLAUDE_DIR" init -b main
+    git -C "$CLAUDE_DIR" add -A
+    git -C "$CLAUDE_DIR" commit -m "initial .claude"
+else
+    echo "  git repo exists. Committing any pending changes..."
+    git -C "$CLAUDE_DIR" add -A
+    git -C "$CLAUDE_DIR" commit -m "sync: $(date +%F)" 2>/dev/null || true
+fi
+echo "  OK"
+
+# [5/${total}] Create remote repo and push
+echo "[5/${total}] Creating GitHub repo '${v.newRepoName}' and pushing..."
+cd "$CLAUDE_DIR"
+gh repo create '${bashEsc(v.newRepoName)}' --private --source=. --remote=origin --push
+cd - >/dev/null
+echo "  OK - repo created and pushed"
+`;
+  s += bashSuffix(6, total, v, true);
+  s += bashFooter(`Repo     : gh:${v.newRepoName}`);
+  return s;
+}
+
+// ============================================================
+// Generator 5: genB_scaffoldFromScratch_PS / Bash (leaf 11, 12)
+// ============================================================
+function genB_scaffoldFromScratch_PS(v) {
+  const total = 8;
+  let s = psHeader(v);
+  s += psPrefix_git(1, total);
+  s += psPrefix_node(2, total);
+  s += psPrefix_gh(3, total);
+  s += `
+# [4/${total}] Create minimal .claude scaffold
+Write-Host "[4/${total}] Creating minimal .claude scaffold..." -ForegroundColor Yellow
+if (Test-Path $claudeDir) {
+    Write-Host "  WARN: ~/.claude already exists. Expected empty environment." -ForegroundColor Yellow
+    Write-Host "  Run backup path instead, or delete ~/.claude first." -ForegroundColor Yellow
+    exit 1
+}
+New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
+New-Item -ItemType Directory -Path "$claudeDir\\skills","$claudeDir\\commands","$claudeDir\\hooks","$claudeDir\\agents","$claudeDir\\plugins" -Force | Out-Null
+$gitignoreContent = @'
+${MIN_GITIGNORE}
+'@
+$claudeMdContent = @'
+${MIN_CLAUDE_MD}
+'@
+$settingsJsonContent = @'
+${MIN_SETTINGS_JSON}
+'@
+Set-Content "$claudeDir\\.gitignore" $gitignoreContent
+Set-Content "$claudeDir\\CLAUDE.md" $claudeMdContent
+Set-Content "$claudeDir\\settings.json" $settingsJsonContent
+Set-Content "$claudeDir\\plugins\\blocklist.json" '{}'
+Write-Host "  OK - scaffold created" -ForegroundColor Green
+
+# [5/${total}] Git init + initial commit
+Write-Host "[5/${total}] Initializing git..." -ForegroundColor Yellow
+git -C $claudeDir init -b main
+git -C $claudeDir add -A
+git -C $claudeDir commit -m "initial .claude scaffold"
+Write-Host "  OK" -ForegroundColor Green
+
+# [6/${total}] Create remote repo and push
+Write-Host "[6/${total}] Creating GitHub repo '${v.newRepoName}' and pushing..." -ForegroundColor Yellow
+Push-Location $claudeDir
+gh repo create '${psEsc(v.newRepoName)}' --private --source=. --remote=origin --push
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  FAILED: gh repo create. Maybe name collision?" -ForegroundColor Red
+    Pop-Location; exit 1
+}
+Pop-Location
+Write-Host "  OK - repo created and pushed" -ForegroundColor Green
+`;
+  s += psSuffix(7, total, v, /*hasHandoverSkill*/ false);
+  s += psFooter(`Repo     : gh:${v.newRepoName}`);
+  return s;
+}
+
+function genB_scaffoldFromScratch_Bash(v) {
+  const total = 8;
+  let s = bashHeader(v);
+  s += bashPrefix_git(1, total);
+  s += bashPrefix_node(2, total);
+  s += bashPrefix_gh(3, total);
+  s += `
+# [4/${total}] Create minimal .claude scaffold
+echo "[4/${total}] Creating minimal .claude scaffold..."
+if [ -d "$CLAUDE_DIR" ]; then
+    echo "  WARN: ~/.claude already exists. Expected empty environment."
+    echo "  Run backup path instead, or delete ~/.claude first."
+    exit 1
+fi
+mkdir -p "$CLAUDE_DIR"/{skills,commands,hooks,agents,plugins}
+cat > "$CLAUDE_DIR/.gitignore" << 'GITIGNOREEOF'
+${MIN_GITIGNORE}
+GITIGNOREEOF
+cat > "$CLAUDE_DIR/CLAUDE.md" << 'CLAUDEMDEOF'
+${MIN_CLAUDE_MD}
+CLAUDEMDEOF
+cat > "$CLAUDE_DIR/settings.json" << 'SETTINGSEOF'
+${MIN_SETTINGS_JSON}
+SETTINGSEOF
+echo '{}' > "$CLAUDE_DIR/plugins/blocklist.json"
+echo "  OK - scaffold created"
+
+# [5/${total}] Git init + initial commit
+echo "[5/${total}] Initializing git..."
+git -C "$CLAUDE_DIR" init -b main
+git -C "$CLAUDE_DIR" add -A
+git -C "$CLAUDE_DIR" commit -m "initial .claude scaffold"
+echo "  OK"
+
+# [6/${total}] Create remote repo and push
+echo "[6/${total}] Creating GitHub repo '${v.newRepoName}' and pushing..."
+cd "$CLAUDE_DIR"
+gh repo create '${bashEsc(v.newRepoName)}' --private --source=. --remote=origin --push
+cd - >/dev/null
+echo "  OK - repo created and pushed"
+`;
+  s += bashSuffix(7, total, v, false);
+  s += bashFooter(`Repo     : gh:${v.newRepoName}`);
+  return s;
+}
+
+// ============================================================
+// UI helpers: tab switching, copy
+// ============================================================
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -767,7 +1711,6 @@ function switchTab(tab) {
   }
 }
 
-// --- 複製 ---
 async function copyText(elementId, btn) {
   const text = document.getElementById(elementId).textContent;
   try {
@@ -776,7 +1719,6 @@ async function copyText(elementId, btn) {
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = '📋 複製'; btn.classList.remove('copied'); }, 2000);
   } catch {
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = text; document.body.appendChild(ta);
     ta.select(); document.execCommand('copy');
@@ -785,6 +1727,44 @@ async function copyText(elementId, btn) {
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = '📋 複製'; btn.classList.remove('copied'); }, 2000);
   }
+}
+
+// ============================================================
+// Init
+// ============================================================
+(function init() {
+  loadState();
+  parseUrlState();
+  loadFormFromURL();
+
+  // Legacy bookmark (has name/email/repo but no d4) → 視為 B-existing (leaf 7)
+  if (hasLegacyBookmarkParams() && !state.d4) {
+    state = { d1: 1, d2: 1, d3: 1, d4: 'B' };
+  }
+
+  const leaf = resolveLeaf(state);
+  if (leaf) {
+    advanceToForm();
+  } else {
+    // 至少 d4 有值？
+    if (state.d4 && state.d1 === null) showOnly('gate-q2');
+    else if (state.d4 && state.d1 !== null && state.d2 === null) showOnly('gate-q3');
+    else if (state.d4 && state.d1 !== null && state.d2 === 1 && state.d3 === null) showOnly('gate-q4');
+    else showOnly('gate-q1');
+  }
+})();
+
+// 暴露給測試用
+if (typeof window !== 'undefined') {
+  window.__claudeSetup = {
+    resolveLeaf, resolveGenerator, resolveForm,
+    genByShell, getValues,
+    genA_clone_PS, genA_clone_Bash,
+    genA_createRepo_PS, genA_createRepo_Bash,
+    genB_cloneExisting_PS, genB_cloneExisting_Bash,
+    genB_createRepoFromLocal_PS, genB_createRepoFromLocal_Bash,
+    genB_scaffoldFromScratch_PS, genB_scaffoldFromScratch_Bash,
+  };
 }
 </script>
 </body>
