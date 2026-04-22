@@ -940,7 +940,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     winget install --id Git.Git -e --accept-package-agreements --accept-source-agreements
     $env:PATH += ";C:\\Program Files\\Git\\cmd"
     if (!(Get-Command git -ErrorAction SilentlyContinue)) {
-        Write-Host "  FAILED: Please install Git manually from https://git-scm.com" -ForegroundColor Red
+        Write-Host "  失敗：winget 裝完仍找不到 git。請到 https://git-scm.com 手動安裝後重跑" -ForegroundColor Red
         exit 1
     }
 }
@@ -953,8 +953,7 @@ function bashPrefix_git(stepNum, totalSteps) {
 # [${stepNum}/${totalSteps}] Check git
 echo "[${stepNum}/${totalSteps}] Checking git..."
 if ! command -v git &>/dev/null; then
-    echo "  FAILED: Git is not installed."
-    echo "  Please install from https://git-scm.com/download/win"
+    echo "  失敗：沒裝 Git。請到 https://git-scm.com/download/win 下載安裝後重跑"
     exit 1
 fi
 echo "  OK - $(git --version)"
@@ -976,7 +975,7 @@ if (!(Get-Command node -ErrorAction SilentlyContinue)) {
         }
     }
     if (!(Get-Command node -ErrorAction SilentlyContinue)) {
-        Write-Host "  WARNING: Node installed but not in PATH. Restart PowerShell and re-run." -ForegroundColor Yellow
+        Write-Host "  警告：Node 裝好了但還沒進 PATH。請關掉 PowerShell 重開一個再跑一次這個腳本" -ForegroundColor Yellow
         exit 1
     }
 }
@@ -1004,7 +1003,7 @@ if ! command -v node &>/dev/null; then
         done
     fi
     if ! command -v node &>/dev/null; then
-        echo "  WARNING: Node installed but not found. Restart Git Bash and re-run."
+        echo "  警告：Node 裝好了但還沒進 PATH。請關掉 Git Bash 重開一個再跑一次這個腳本"
         exit 1
     fi
 fi
@@ -1026,7 +1025,7 @@ if (!(Get-Command gh -ErrorAction SilentlyContinue)) {
         }
     }
     if (!(Get-Command gh -ErrorAction SilentlyContinue)) {
-        Write-Host "  WARNING: gh installed but not in PATH. Restart PowerShell and re-run." -ForegroundColor Yellow
+        Write-Host "  警告：gh 裝好了但還沒進 PATH。請關掉 PowerShell 重開一個再跑一次這個腳本" -ForegroundColor Yellow
         exit 1
     }
 }
@@ -1038,7 +1037,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "  Opening browser for GitHub login..." -ForegroundColor Yellow
     gh auth login --web --git-protocol https
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  FAILED: gh auth login didn't complete" -ForegroundColor Red
+        Write-Host "  失敗：gh auth login 沒完成。請重新執行並在瀏覽器完成 GitHub 登入" -ForegroundColor Red
         exit 1
     }
 }
@@ -1061,7 +1060,7 @@ if ! command -v gh &>/dev/null; then
         done
     fi
     if ! command -v gh &>/dev/null; then
-        echo "  WARNING: gh installed but not found. Restart Git Bash and re-run."
+        echo "  警告：gh 裝好了但還沒進 PATH。請關掉 Git Bash 重開一個再跑一次這個腳本"
         exit 1
     fi
 fi
@@ -1343,7 +1342,15 @@ Write-Host "[3/${total}] Skipped (no local .claude)" -ForegroundColor Green
 # [4/${total}] Clone skill pack
 Write-Host "[4/${total}] Cloning skill pack from ${v.skillPackUrl} ..." -ForegroundColor Yellow
 git clone '${psEsc(v.skillPackUrl)}' $claudeDir
-if ($LASTEXITCODE -ne 0) { Write-Host "  FAILED: check skill pack URL" -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) {
+    if (Test-Path $claudeDir) {
+        Write-Host "  失敗：~/.claude 已經存在且非空，git clone 無法寫入" -ForegroundColor Red
+        Write-Host "  提示：你 Q2 可能答錯了（實際上有本地 .claude）。請回網頁重選「有」以觸發備份步驟。" -ForegroundColor Yellow
+    } else {
+        Write-Host "  失敗：clone 出錯，請檢查 skill pack URL 是否正確、你是否有存取權" -ForegroundColor Red
+    }
+    exit 1
+}
 Write-Host "  OK - Clone complete" -ForegroundColor Green
 
 # [5/${total}] Rewire remotes (origin → your repo, upstream → skill pack)
@@ -1373,7 +1380,15 @@ echo "[3/${total}] Skipped (no local .claude)"
   s += `
 # [4/${total}] Clone skill pack
 echo "[4/${total}] Cloning skill pack from ${v.skillPackUrl} ..."
-git clone '${bashEsc(v.skillPackUrl)}' "$CLAUDE_DIR"
+if ! git clone '${bashEsc(v.skillPackUrl)}' "$CLAUDE_DIR"; then
+    if [ -d "$CLAUDE_DIR" ]; then
+        echo "  失敗：~/.claude 已經存在且非空，git clone 無法寫入"
+        echo "  提示：你 Q2 可能答錯了（實際上有本地 .claude）。請回網頁重選「有」以觸發備份步驟。"
+    else
+        echo "  失敗：clone 出錯，請檢查 skill pack URL 是否正確、你是否有存取權"
+    fi
+    exit 1
+fi
 echo "  OK - Clone complete"
 
 # [5/${total}] Rewire remotes
@@ -1408,7 +1423,15 @@ Write-Host "[4/${total}] Skipped (no local .claude)" -ForegroundColor Green
 # [5/${total}] Clone skill pack
 Write-Host "[5/${total}] Cloning skill pack from ${v.skillPackUrl} ..." -ForegroundColor Yellow
 git clone '${psEsc(v.skillPackUrl)}' $claudeDir
-if ($LASTEXITCODE -ne 0) { Write-Host "  FAILED: check skill pack URL" -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) {
+    if (Test-Path $claudeDir) {
+        Write-Host "  失敗：~/.claude 已經存在且非空，git clone 無法寫入" -ForegroundColor Red
+        Write-Host "  提示：你 Q2 可能答錯了（實際上有本地 .claude）。請回網頁重選「有」以觸發備份步驟。" -ForegroundColor Yellow
+    } else {
+        Write-Host "  失敗：clone 出錯，請檢查 skill pack URL 是否正確、你是否有存取權" -ForegroundColor Red
+    }
+    exit 1
+}
 Write-Host "  OK - Clone complete" -ForegroundColor Green
 
 # [6/${total}] Create your repo and rewire remotes
@@ -1418,7 +1441,7 @@ git -C $claudeDir remote add upstream '${psEsc(v.skillPackUrl)}'
 Push-Location $claudeDir
 gh repo create '${psEsc(v.newRepoName)}' --private --source=. --remote=origin --push
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  FAILED: gh repo create (maybe name collision). Try a different name." -ForegroundColor Red
+    Write-Host "  失敗：gh repo create 建立 repo 失敗（可能已有同名 repo）。請換一個名稱再試" -ForegroundColor Red
     Pop-Location; exit 1
 }
 Pop-Location
@@ -1444,7 +1467,15 @@ echo "[4/${total}] Skipped (no local .claude)"
   s += `
 # [5/${total}] Clone skill pack
 echo "[5/${total}] Cloning skill pack from ${v.skillPackUrl} ..."
-git clone '${bashEsc(v.skillPackUrl)}' "$CLAUDE_DIR"
+if ! git clone '${bashEsc(v.skillPackUrl)}' "$CLAUDE_DIR"; then
+    if [ -d "$CLAUDE_DIR" ]; then
+        echo "  失敗：~/.claude 已經存在且非空，git clone 無法寫入"
+        echo "  提示：你 Q2 可能答錯了（實際上有本地 .claude）。請回網頁重選「有」以觸發備份步驟。"
+    else
+        echo "  失敗：clone 出錯，請檢查 skill pack URL 是否正確、你是否有存取權"
+    fi
+    exit 1
+fi
 echo "  OK - Clone complete"
 
 # [6/${total}] Create your repo and rewire remotes
@@ -1480,7 +1511,15 @@ Write-Host "[3/${total}] Skipped (no local .claude)" -ForegroundColor Green
 # [4/${total}] Clone
 Write-Host "[4/${total}] Cloning $repo ..." -ForegroundColor Yellow
 git clone $repo $claudeDir
-if ($LASTEXITCODE -ne 0) { Write-Host "  FAILED: check repo URL and permissions" -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) {
+    if (Test-Path $claudeDir) {
+        Write-Host "  失敗：~/.claude 已經存在且非空，git clone 無法寫入" -ForegroundColor Red
+        Write-Host "  提示：你 Q2 可能答錯了（實際上有本地 .claude）。請回網頁重選「有」以觸發備份步驟。" -ForegroundColor Yellow
+    } else {
+        Write-Host "  失敗：clone 出錯，請檢查 repo URL 和 GitHub 存取權限" -ForegroundColor Red
+    }
+    exit 1
+}
 Write-Host "  OK - Clone complete" -ForegroundColor Green
 `;
   s += psSuffix(5, total, v, true);
@@ -1503,7 +1542,15 @@ echo "[3/${total}] Skipped (no local .claude)"
   s += `
 # [4/${total}] Clone
 echo "[4/${total}] Cloning $REPO ..."
-git clone "$REPO" "$CLAUDE_DIR"
+if ! git clone "$REPO" "$CLAUDE_DIR"; then
+    if [ -d "$CLAUDE_DIR" ]; then
+        echo "  失敗：~/.claude 已經存在且非空，git clone 無法寫入"
+        echo "  提示：你 Q2 可能答錯了（實際上有本地 .claude）。請回網頁重選「有」以觸發備份步驟。"
+    else
+        echo "  失敗：clone 出錯，請檢查 repo URL 和 GitHub 存取權限"
+    fi
+    exit 1
+fi
 echo "  OK - Clone complete"
 `;
   s += bashSuffix(5, total, v, true);
@@ -1524,7 +1571,8 @@ function genB_createRepoFromLocal_PS(v) {
 # [4/${total}] Ensure local .claude is a git repo and has a commit
 Write-Host "[4/${total}] Preparing local .claude for push..." -ForegroundColor Yellow
 if (!(Test-Path $claudeDir)) {
-    Write-Host "  FAILED: ~/.claude does not exist. Expected local directory for this flow." -ForegroundColor Red
+    Write-Host "  失敗：~/.claude 不存在。這個流程需要本地已有 .claude 資料夾" -ForegroundColor Red
+    Write-Host "  提示：你 Q2 可能答錯了。請回網頁重選「沒有」，改走建立骨架的流程。" -ForegroundColor Yellow
     exit 1
 }
 if (!(Test-Path "$claudeDir\\.git")) {
@@ -1545,7 +1593,7 @@ Write-Host "[5/${total}] Creating GitHub repo '${v.newRepoName}' and pushing..."
 Push-Location $claudeDir
 gh repo create '${psEsc(v.newRepoName)}' --private --source=. --remote=origin --push
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  FAILED: gh repo create. Maybe name collision?" -ForegroundColor Red
+    Write-Host "  失敗：gh repo create 建立 repo 失敗（可能已有同名 repo）。請換一個名稱再試" -ForegroundColor Red
     Pop-Location; exit 1
 }
 Pop-Location
@@ -1566,7 +1614,8 @@ function genB_createRepoFromLocal_Bash(v) {
 # [4/${total}] Ensure local .claude is a git repo and has a commit
 echo "[4/${total}] Preparing local .claude for push..."
 if [ ! -d "$CLAUDE_DIR" ]; then
-    echo "  FAILED: ~/.claude does not exist."
+    echo "  失敗：~/.claude 不存在。這個流程需要本地已有 .claude 資料夾"
+    echo "  提示：你 Q2 可能答錯了。請回網頁重選「沒有」，改走建立骨架的流程。"
     exit 1
 fi
 if [ ! -d "$CLAUDE_DIR/.git" ]; then
@@ -1606,8 +1655,8 @@ function genB_scaffoldFromScratch_PS(v) {
 # [4/${total}] Create minimal .claude scaffold
 Write-Host "[4/${total}] Creating minimal .claude scaffold..." -ForegroundColor Yellow
 if (Test-Path $claudeDir) {
-    Write-Host "  WARN: ~/.claude already exists. Expected empty environment." -ForegroundColor Yellow
-    Write-Host "  Run backup path instead, or delete ~/.claude first." -ForegroundColor Yellow
+    Write-Host "  警告：~/.claude 已存在，但這個流程預期是空環境" -ForegroundColor Yellow
+    Write-Host "  提示：你 Q2 可能答錯了。請回網頁重選「有」走備份路徑，或手動刪 ~/.claude 再跑一次。" -ForegroundColor Yellow
     exit 1
 }
 New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
@@ -1639,7 +1688,7 @@ Write-Host "[6/${total}] Creating GitHub repo '${v.newRepoName}' and pushing..."
 Push-Location $claudeDir
 gh repo create '${psEsc(v.newRepoName)}' --private --source=. --remote=origin --push
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  FAILED: gh repo create. Maybe name collision?" -ForegroundColor Red
+    Write-Host "  失敗：gh repo create 建立 repo 失敗（可能已有同名 repo）。請換一個名稱再試" -ForegroundColor Red
     Pop-Location; exit 1
 }
 Pop-Location
@@ -1660,8 +1709,8 @@ function genB_scaffoldFromScratch_Bash(v) {
 # [4/${total}] Create minimal .claude scaffold
 echo "[4/${total}] Creating minimal .claude scaffold..."
 if [ -d "$CLAUDE_DIR" ]; then
-    echo "  WARN: ~/.claude already exists. Expected empty environment."
-    echo "  Run backup path instead, or delete ~/.claude first."
+    echo "  警告：~/.claude 已存在，但這個流程預期是空環境"
+    echo "  提示：你 Q2 可能答錯了。請回網頁重選「有」走備份路徑，或手動刪 ~/.claude 再跑一次。"
     exit 1
 fi
 mkdir -p "$CLAUDE_DIR"/{skills,commands,hooks,agents,plugins}
