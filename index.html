@@ -125,6 +125,41 @@
   .error-msg { color: var(--danger); font-size: 12px; margin-top: 3px; display: none; }
   .error-msg.visible { display: block; }
 
+  /* Gate (GitHub account check) */
+  #gate, #tutorial { display: none; }
+  #gate.visible, #tutorial.visible { display: block; }
+  #main-flow.hidden { display: none; }
+  .gate-question { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .gate-desc { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
+  .gate-btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .gate-btn {
+    flex: 1; min-width: 220px; padding: 18px 20px; border-radius: 8px;
+    border: 1px solid var(--border); cursor: pointer; text-align: left;
+    background: var(--surface2); color: var(--text); font-family: inherit;
+    transition: all 0.15s;
+  }
+  .gate-btn:hover { border-color: var(--accent); background: #1f2937; }
+  .gate-btn .gate-btn-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .gate-btn .gate-btn-hint { font-size: 12px; color: var(--text2); }
+  .gate-btn.primary { border-color: var(--accent); }
+
+  /* Tutorial */
+  .tutorial-step {
+    padding: 14px 16px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--code-bg); margin-bottom: 10px;
+  }
+  .tutorial-step .step-num {
+    display: inline-block; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: #fff; text-align: center; line-height: 24px;
+    font-size: 13px; font-weight: 600; margin-right: 10px;
+  }
+  .tutorial-step .step-title { font-weight: 600; display: inline; }
+  .tutorial-step .step-body { margin-top: 8px; margin-left: 34px; color: var(--text2); font-size: 14px; }
+  .tutorial-step a { color: var(--accent); text-decoration: none; }
+  .tutorial-step a:hover { text-decoration: underline; }
+  .tutorial-back { background: transparent; color: var(--text2); font-size: 13px; border: none; cursor: pointer; margin-top: 12px; }
+  .tutorial-back:hover { color: var(--accent); }
+
   /* Responsive */
   @media (max-width: 600px) {
     body { padding: 12px; }
@@ -132,6 +167,7 @@
     .section { padding: 16px; }
     .btn-row { flex-direction: column; }
     .btn { width: 100%; justify-content: center; }
+    .gate-btn { min-width: 0; }
   }
 </style>
 </head>
@@ -142,6 +178,84 @@
     <p>一鍵安裝你的 Claude Code 個人設定到任何 Windows 裝置</p>
   </div>
 
+  <!-- Gate：確認 GitHub 帳號 -->
+  <div id="gate" class="section">
+    <div class="gate-question">開始前先問一下 — 你有 GitHub 帳號嗎？</div>
+    <div class="gate-desc">這個工具需要把你的 Claude 設定放在 GitHub repo，方便跨裝置同步。</div>
+    <div class="gate-btn-row">
+      <button class="gate-btn primary" onclick="gateAnswer(true)">
+        <div class="gate-btn-title">✅ 有帳號，開始設定</div>
+        <div class="gate-btn-hint">繼續填 Git 使用者名稱、email、repo URL</div>
+      </button>
+      <button class="gate-btn" onclick="gateAnswer(false)">
+        <div class="gate-btn-title">❓ 還沒有，教我申請</div>
+        <div class="gate-btn-hint">帶你走 GitHub 註冊流程</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tutorial：GitHub 註冊教學 -->
+  <div id="tutorial" class="section">
+    <div class="section-title">
+      申請 GitHub 帳號 <span class="badge optional">5 分鐘</span>
+    </div>
+    <div class="tutorial-step">
+      <span class="step-num">1</span>
+      <span class="step-title">前往 GitHub 註冊頁</span>
+      <div class="step-body">
+        打開 <a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a>（會開新分頁）
+      </div>
+    </div>
+    <div class="tutorial-step">
+      <span class="step-num">2</span>
+      <span class="step-title">填 email</span>
+      <div class="step-body">
+        用常用的 email（之後 commit 會掛在這個 email 上；之後可以改成 noreply 隱私版本）
+      </div>
+    </div>
+    <div class="tutorial-step">
+      <span class="step-num">3</span>
+      <span class="step-title">設密碼</span>
+      <div class="step-body">
+        至少 15 字或 8 字含數字+小寫。建議用密碼管理器產一組。
+      </div>
+    </div>
+    <div class="tutorial-step">
+      <span class="step-num">4</span>
+      <span class="step-title">選 username</span>
+      <div class="step-body">
+        會變成你的 GitHub URL（<code>github.com/你的名字</code>）。取短好記的，之後改要遷移會麻煩。
+      </div>
+    </div>
+    <div class="tutorial-step">
+      <span class="step-num">5</span>
+      <span class="step-title">通過機器人驗證 + 驗證 email</span>
+      <div class="step-body">
+        解完拼圖後會寄驗證信到你填的 email，打開信點連結完成驗證。
+      </div>
+    </div>
+    <div class="tutorial-step">
+      <span class="step-num">6</span>
+      <span class="step-title">（強烈建議）開 2FA 兩步驟驗證</span>
+      <div class="step-body">
+        登入後 → Settings → Password and authentication → Two-factor authentication。用 Authenticator app（Google Authenticator / 1Password / Authy）。
+      </div>
+    </div>
+    <div class="tutorial-step">
+      <span class="step-num">7</span>
+      <span class="step-title">建立你的 Claude 設定 repo</span>
+      <div class="step-body">
+        右上 "+" → New repository → 名稱例如 <code>claude_skill</code> → Private（建議）→ Create。<br>
+        建好後 URL 長這樣：<code>https://github.com/你的名字/claude_skill.git</code>，就是等下表單要填的 Repo URL。
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top: 20px;">
+      <button class="btn btn-primary" onclick="gateAnswer(true)">✅ 我申請好了，繼續設定</button>
+      <button class="tutorial-back" onclick="showGate()">← 回上一步</button>
+    </div>
+  </div>
+
+<div id="main-flow" class="hidden">
   <!-- 基本設定 -->
   <div class="section">
     <div class="section-title">
@@ -239,8 +353,49 @@
     </div>
   </div>
 </div>
+<!-- end #main-flow -->
+</div>
 
 <script>
+// --- Gate：GitHub 帳號分流 ---
+const GATE_KEY = 'claude-setup-gate-passed';
+function showGate() {
+  document.getElementById('gate').classList.add('visible');
+  document.getElementById('tutorial').classList.remove('visible');
+  document.getElementById('main-flow').classList.add('hidden');
+}
+function showTutorial() {
+  document.getElementById('gate').classList.remove('visible');
+  document.getElementById('tutorial').classList.add('visible');
+  document.getElementById('main-flow').classList.add('hidden');
+}
+function showMainFlow() {
+  document.getElementById('gate').classList.remove('visible');
+  document.getElementById('tutorial').classList.remove('visible');
+  document.getElementById('main-flow').classList.remove('hidden');
+}
+function gateAnswer(hasAccount) {
+  if (hasAccount) {
+    try { localStorage.setItem(GATE_KEY, '1'); } catch {}
+    showMainFlow();
+  } else {
+    showTutorial();
+  }
+}
+(function initGate() {
+  // Bypass conditions: URL has ?gh=1, OR URL has form fields (returning user with bookmark),
+  // OR localStorage flag set.
+  const p = new URLSearchParams(location.search);
+  const hasFormParams = p.get('name') || p.get('email') || p.get('repo');
+  let passed = false;
+  try { passed = localStorage.getItem(GATE_KEY) === '1'; } catch {}
+  if (p.get('gh') === '1' || hasFormParams || passed) {
+    showMainFlow();
+  } else {
+    showGate();
+  }
+})();
+
 // --- URL 參數自動帶入 ---
 (function loadFromURL() {
   const p = new URLSearchParams(location.search);
@@ -414,6 +569,17 @@ $envPath = "$claudeDir\\skills\\handover\\.env"
 if (Test-Path (Split-Path $envPath)) {
     Set-Content $envPath $envContent
     Write-Host "  OK - Written to $envPath" -ForegroundColor Green
+    # Auto-verify
+    $verifyScript = "$claudeDir\\skills\\handover\\scripts\\verify.mjs"
+    if (Test-Path $verifyScript) {
+        Write-Host "  Verifying Notion credentials..." -ForegroundColor Yellow
+        $verifyOut = & node $verifyScript 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  Verified - handover ready to use" -ForegroundColor Green
+        } else {
+            Write-Host "  Verify failed - run: node $verifyScript" -ForegroundColor Yellow
+        }
+    }
 } else {
     Write-Host "  Skipped - handover skill not found in repo" -ForegroundColor Gray
 }`;
@@ -421,7 +587,9 @@ if (Test-Path (Split-Path $envPath)) {
     script += `
 
 # [7/7] Notion credentials
-Write-Host "[7/7] Notion credentials - skipped (not provided)" -ForegroundColor Gray`;
+Write-Host "[7/7] Notion credentials - skipped (not provided)" -ForegroundColor Gray
+Write-Host "  Tip: want handover sync later? Run:" -ForegroundColor Gray
+Write-Host "    node $claudeDir\\skills\\handover\\scripts\\setup.mjs" -ForegroundColor Cyan`;
   }
 
   script += `
@@ -544,6 +712,16 @@ NOTION_HANDOVER_TOKEN=${v.notionToken}
 NOTION_HANDOVER_DB_ID=${v.notionDb}
 ENVEOF
     echo "  OK - Written to $ENV_PATH"
+    # Auto-verify
+    VERIFY_SCRIPT="$CLAUDE_DIR/skills/handover/scripts/verify.mjs"
+    if [ -f "$VERIFY_SCRIPT" ]; then
+        echo "  Verifying Notion credentials..."
+        if node "$VERIFY_SCRIPT" >/dev/null 2>&1; then
+            echo "  Verified - handover ready to use"
+        else
+            echo "  Verify failed - run: node $VERIFY_SCRIPT"
+        fi
+    fi
 else
     echo "  Skipped - handover skill not found in repo"
 fi`;
@@ -551,7 +729,9 @@ fi`;
     script += `
 
 # [7/7] Notion credentials
-echo "[7/7] Notion credentials - skipped (not provided)"`;
+echo "[7/7] Notion credentials - skipped (not provided)"
+echo "  Tip: want handover sync later? Run:"
+echo "    node $CLAUDE_DIR/skills/handover/scripts/setup.mjs"`;
   }
 
   script += `
