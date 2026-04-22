@@ -362,7 +362,7 @@
       </div>
       <div class="field">
         <label for="skill_pack_url">Skill pack repo URL (HTTPS)</label>
-        <input type="text" id="skill_pack_url" value="https://github.com/AlanPai/.claude.git">
+        <input type="text" id="skill_pack_url" value="https://github.com/AlanPai/claude-skillpack.git">
         <div class="hint">預設是 Alan 的 .claude repo。也可以改成任何人 fork 出的 skill 包</div>
       </div>
     </div>
@@ -791,7 +791,7 @@ function getValues() {
   const v = { leaf, generator: gen, state: { ...state } };
 
   if (gen === 'A_clone' || gen === 'A_createRepo') {
-    v.skillPackUrl = getVal('skill_pack_url') || 'https://github.com/AlanPai/.claude.git';
+    v.skillPackUrl = getVal('skill_pack_url') || 'https://github.com/AlanPai/claude-skillpack.git';
     v.name = getVal('a_name');
     v.email = getVal('a_email');
     v.notionToken = getVal('a_notion_token');
